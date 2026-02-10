@@ -21,6 +21,18 @@ GROUND_Y :: 127
 GROUND_SPRITE_WIDTH :: 1200
 GROUND_SPRITE_HEIGHT :: 12
 
+CACTUS_SMALL_SPRITE_WIDTH  :: 17
+CACTUS_SMALL_SPRITE_HEIGHT :: 35
+CACTUS_SMALL_Y :: 105
+
+CACTUS_LARGE_SPRITE_WIDTH  :: 25
+CACTUS_LARGE_SPRITE_HEIGHT :: 50
+CACTUS_LARGE_Y :: 90
+
+PTERODACTYL_SPRITE_WIDTH  :: 46
+PTERODACTYL_SPRITE_HEIGHT :: 40
+PTERODACTYL_Y :: []int { 100, 75, 50 }
+
 sprite_coordinates_lores := Sprite_Coordinates {
 	cactus_large = {332, 2},
 	cactus_small = {228, 2},
@@ -91,6 +103,10 @@ main :: proc() {
 		ground_position: [2]f32 = {GROUND_X, GROUND_Y};
 		ground_sprite_rect: raylib.Rectangle = {sprite_coordinates_lores.ground.x, sprite_coordinates_lores.ground.y, GROUND_SPRITE_WIDTH, GROUND_SPRITE_HEIGHT};
 		raylib.DrawTextureRec(spritesheet_lores_tex, ground_sprite_rect, ground_position, raylib.WHITE);
+		
+		cactus_small_position: [2]f32 = {300, CACTUS_SMALL_Y};
+		cactus_small_sprite_rect: raylib.Rectangle = {sprite_coordinates_lores.cactus_small.x, sprite_coordinates_lores.cactus_small.y, CACTUS_SMALL_SPRITE_WIDTH, CACTUS_SMALL_SPRITE_HEIGHT};
+		raylib.DrawTextureRec(spritesheet_lores_tex, cactus_small_sprite_rect, cactus_small_position, raylib.WHITE);
 		
 		raylib.DrawTextureRec(spritesheet_lores_tex, trex_sprite_rect, trex_position, raylib.WHITE);
 		
