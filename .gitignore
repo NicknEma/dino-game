@@ -1,5 +1,5 @@
-# Prerequisites
-*.d
+# Embeds
+*.res
 
 # Object files
 *.o
@@ -11,10 +11,6 @@
 *.ilk
 *.map
 *.exp
-
-# Precompiled Headers
-*.gch
-*.pch
 
 # Libraries
 *.lib
@@ -41,12 +37,8 @@
 *.su
 *.idb
 *.pdb
+*.rdi
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# Project files
+*.raddbg_project
+*.4coder
