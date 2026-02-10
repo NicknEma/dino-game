@@ -50,13 +50,14 @@ Sprites :: struct {
 }
 
 main :: proc() {
-	spritesheet_lores_img := raylib.LoadImageFromMemory(".png", raw_data(spritesheet_lores), cast(i32)len(spritesheet_lores));
-	spritesheet_lores_tex := raylib.LoadTextureFromImage(spritesheet_lores_img);
-	
 	raylib.SetTraceLogLevel(.ERROR);
 	raylib.InitWindow(DEFAULT_WINDOW_W, DEFAULT_WINDOW_H, "A window");
 	raylib.SetExitKey(raylib.KeyboardKey.KEY_NULL);
 	raylib.SetTargetFPS(60);
+	
+	spritesheet_lores_img := raylib.LoadImageFromMemory(".png", raw_data(spritesheet_lores), cast(i32)len(spritesheet_lores));
+	spritesheet_lores_tex := raylib.LoadTextureFromImage(spritesheet_lores_img);
+	
 	for !raylib.WindowShouldClose() {
 		raylib.BeginDrawing();
 		bg_color := raylib.GetColor(BG_COLOR_DAY);
