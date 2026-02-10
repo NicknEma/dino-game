@@ -3,7 +3,7 @@
 set root=%cd%
 set opts=-debug
 
-if not exist dir build mkdir build
+if not exist build mkdir build
 pushd build
-odin build %opts% %root%\source -out:dino.exe
+odin build %root%\source %opts% -out:dino.exe
 popd
