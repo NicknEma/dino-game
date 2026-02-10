@@ -58,14 +58,26 @@ main :: proc() {
 	spritesheet_lores_img := raylib.LoadImageFromMemory(".png", raw_data(spritesheet_lores), cast(i32)len(spritesheet_lores));
 	spritesheet_lores_tex := raylib.LoadTextureFromImage(spritesheet_lores_img);
 	
+	game_started := false;
+	
 	for !raylib.WindowShouldClose() {
+		trex_position: [2]f32 = {50, 50};
+		
+		trex_sprite_rect: raylib.Rectangle;
+		if !game_started {
+			trex_sprite_rect = {sprite_coordinates_lores.trex.x, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+			
+			if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) {
+				game_started = true;
+			}
+		} else {
+			trex_sprite_rect = {sprite_coordinates_lores.trex.x + 2*TREX_WIDTH_NORMAL, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+		}
+		
 		raylib.BeginDrawing();
 		bg_color := raylib.GetColor(BG_COLOR_DAY);
 		raylib.ClearBackground(bg_color);
 		
-		trex_position: [2]f32 = {50, 50};
-		trex_frame_rect: raylib.Rectangle = {sprite_coordinates_lores.trex.x,sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
-		raylib.DrawTextureRec(spritesheet_lores_tex, trex_frame_rect, trex_position, raylib.WHITE);
 		
 		raylib.EndDrawing();
 	}
