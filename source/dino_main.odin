@@ -54,18 +54,34 @@ main :: proc() {
 	
 	game_started := false;
 	
+	frame_count_from_attempt_start := 0;
+	
 	for !raylib.WindowShouldClose() {
-		trex_position: [2]f32 = {50, 50};
+		trex_position: [2]f32 = {50, 95};
+		
+		trex_sprite_rect_waiting: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 0, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+		trex_sprite_rect_blinking: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 40, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+		trex_sprite_rect_running: []raylib.Rectangle = {
+			{sprite_coordinates_lores.trex.x + 88, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL},
+			{sprite_coordinates_lores.trex.x + 132, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL},
+		};
+		trex_sprite_rect_crashed: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 220, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+		trex_sprite_rect_jumping: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 0, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+		trex_sprite_rect_ducking: []raylib.Rectangle = {
+			{sprite_coordinates_lores.trex.x + 262, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL},
+			{sprite_coordinates_lores.trex.x + 321, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL},
+		};
 		
 		trex_sprite_rect: raylib.Rectangle;
 		if !game_started {
-			trex_sprite_rect = {sprite_coordinates_lores.trex.x, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+			trex_sprite_rect = trex_sprite_rect_waiting;
 			
 			if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) {
 				game_started = true;
+				frame_count_from_attempt_start = 0;
 			}
 		} else {
-			trex_sprite_rect = {sprite_coordinates_lores.trex.x + 2*TREX_WIDTH_NORMAL, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
+			trex_sprite_rect = trex_sprite_rect_running[(frame_count_from_attempt_start / 12) % 2];
 		}
 		
 		raylib.BeginDrawing();
@@ -79,5 +95,7 @@ main :: proc() {
 		raylib.DrawTextureRec(spritesheet_lores_tex, trex_sprite_rect, trex_position, raylib.WHITE);
 		
 		raylib.EndDrawing();
+		
+		frame_count_from_attempt_start += 1;
 	}
 }
