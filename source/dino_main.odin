@@ -38,17 +38,6 @@ Sprite_Coordinates :: struct {
 	text: [2]f32
 }
 
-Sprites :: struct {
-	cactus_large: raylib.Image,
-	cactus_small: raylib.Image,
-	cloud: raylib.Image,
-	ground: raylib.Image,
-	pterodactyl: raylib.Image,
-	restart_icon: raylib.Image,
-	trex: raylib.Image,
-	text: raylib.Image
-}
-
 main :: proc() {
 	raylib.SetTraceLogLevel(.ERROR);
 	raylib.InitWindow(DEFAULT_WINDOW_W, DEFAULT_WINDOW_H, "A window");
