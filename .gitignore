@@ -42,3 +42,6 @@
 # Project files
 *.raddbg_project
 *.4coder
+
+# Other
+*.kra
