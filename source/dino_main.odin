@@ -94,6 +94,13 @@ main :: proc() {
 			}
 		} else {
 			trex_sprite_rect = trex_sprite_rect_running[(frame_count_from_attempt_start / 12) % 2];
+			running_ms_per_frame := 12;
+			waiting_ms_per_frame := 3;
+			crashed_ms_per_frame := 60;
+			jumping_ms_per_frame := 60;
+			ducking_ms_per_frame := 8;
+			
+			trex_sprite_rect = trex_sprite_rect_running[(frame_count_from_attempt_start / running_ms_per_frame) % len(trex_sprite_rect_running)];
 		}
 		
 		raylib.BeginDrawing();
