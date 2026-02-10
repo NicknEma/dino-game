@@ -80,8 +80,8 @@ main :: proc() {
 		trex_sprite_rect_crashed: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 220, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
 		trex_sprite_rect_jumping: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 0, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
 		trex_sprite_rect_ducking: []raylib.Rectangle = {
-			{sprite_coordinates_lores.trex.x + 262, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL},
-			{sprite_coordinates_lores.trex.x + 321, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL},
+			{sprite_coordinates_lores.trex.x + 262, sprite_coordinates_lores.trex.y, TREX_WIDTH_DUCK, TREX_HEIGHT_DUCK},
+			{sprite_coordinates_lores.trex.x + 321, sprite_coordinates_lores.trex.y, TREX_WIDTH_DUCK, TREX_HEIGHT_DUCK},
 		};
 		
 		trex_sprite_rect: raylib.Rectangle;
