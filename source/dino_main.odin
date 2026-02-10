@@ -1,0 +1,5 @@
+package dino
+
+main :: proc() {
+	
+}
