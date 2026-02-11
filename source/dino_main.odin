@@ -224,8 +224,11 @@ main :: proc() {
 	time_since_attempt_start := f32(0);
 	attempt_count := 0;
 	
+	mute_sfx := false;
+	
 	when ODIN_DEBUG {
 		debug_draw_hitboxes := false;
+		mute_sfx = true;
 	}
 	
 	for !raylib.WindowShouldClose() {
@@ -236,6 +239,9 @@ main :: proc() {
 		when ODIN_DEBUG {
 			if raylib.IsKeyPressed(raylib.KeyboardKey.D) {
 				debug_draw_hitboxes = !debug_draw_hitboxes;
+			}
+			if raylib.IsKeyPressed(raylib.KeyboardKey.M) {
+				mute_sfx = !mute_sfx;
 			}
 		}
 		
@@ -390,6 +396,9 @@ main :: proc() {
 				for r in trex_collision_boxes {
 					raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
 				}
+			}
+			if mute_sfx {
+				raylib.DrawText("Mute on", window_w / 2, 10, 20, raylib.BLACK);
 			}
 		}
 		
