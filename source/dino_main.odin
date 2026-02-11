@@ -153,6 +153,7 @@ main :: proc() {
 				if dst_x < -SCREEN_GROUND_SEC_W {
 					dst_x += SCREEN_GROUND_W;
 				}
+				ground_x[dst_i] = dst_x;
 				
 				// This re-uses the same source coordinates for multiple portions of the screen.
 				// This makes it more complicated to randomly select them, as setting the
