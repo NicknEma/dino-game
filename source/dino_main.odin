@@ -186,8 +186,18 @@ main :: proc() {
 	time_since_attempt_start := f32(0);
 	attempt_count := 0;
 	
+	when ODIN_DEBUG {
+		debug_draw_hitboxes := false;
+	}
+	
 	for !raylib.WindowShouldClose() {
 		dt := raylib.GetFrameTime();
+		
+		when ODIN_DEBUG {
+			if raylib.IsKeyPressed(raylib.KeyboardKey.D) {
+				debug_draw_hitboxes = !debug_draw_hitboxes;
+			}
+		}
 		
 		trex_position: [2]f32 = {50, 95};
 		trex_y_shift: f32 = 17;
@@ -276,12 +286,14 @@ main :: proc() {
 		cactus_small_sprite_rect: raylib.Rectangle = {SPRITE_1X_COORDINATES.cactus_small.x, SPRITE_1X_COORDINATES.cactus_small.y, CACTUS_SMALL_SPRITE_WIDTH, CACTUS_SMALL_SPRITE_HEIGHT};
 		raylib.DrawTextureRec(sprite_tex, cactus_small_sprite_rect, cactus_small_position, raylib.WHITE);
 		
-		{
-			for r in trex_collision_boxes {
-				raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
+		raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex_position, raylib.WHITE);
+		
+		when ODIN_DEBUG {
+			if debug_draw_hitboxes {
+				for r in trex_collision_boxes {
+					raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
+				}
 			}
-			
-			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex_position, raylib.WHITE);
 		}
 		
 		raylib.EndDrawing();
