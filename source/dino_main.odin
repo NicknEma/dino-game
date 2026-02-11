@@ -24,6 +24,17 @@ SPRITE_1X_TREX_WIDTH_DUCK    ::  59
 SPRITE_1X_TREX_HEIGHT_DUCK   ::  25
 SPRITE_1X_TREX_WIDTH_TOTAL   :: 262
 
+@(rodata)
+trex_collision_boxes_running := [?]raylib.Rectangle {
+	{22,  0, 17, 16}, { 1, 18, 30,  9}, {10, 35, 14,  8},
+	{ 1, 24, 29,  5}, { 5, 30, 21,  4}, { 9, 34, 15,  4}
+}
+
+@(rodata)
+trex_collision_boxes_ducking := [?]raylib.Rectangle {
+	{ 1, 18, 55, 25}
+}
+
 TEXT_X :: 0
 TEXT_Y :: 13
 TEXT_WIDTH :: 191
@@ -180,6 +191,7 @@ main :: proc() {
 		
 		trex_position: [2]f32 = {50, 95};
 		trex_y_shift: f32 = 17;
+		trex_collision_boxes: []raylib.Rectangle;
 		
 		trex_sprite_rect: raylib.Rectangle;
 		{
@@ -208,6 +220,7 @@ main :: proc() {
 			} else {
 				rect_slice = sprite_rects.trex_running[:];
 				ms_per_frame = running_ms_per_frame;
+				trex_collision_boxes = trex_collision_boxes_running[:];
 				
 				if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
 					trex_status = .Ducking;
@@ -216,6 +229,7 @@ main :: proc() {
 					ms_per_frame = ducking_ms_per_frame;
 					
 					trex_position.y += trex_y_shift;
+					trex_collision_boxes = trex_collision_boxes_ducking[:];
 				} else {
 					trex_status = .Running;
 				}
@@ -262,7 +276,13 @@ main :: proc() {
 		cactus_small_sprite_rect: raylib.Rectangle = {SPRITE_1X_COORDINATES.cactus_small.x, SPRITE_1X_COORDINATES.cactus_small.y, CACTUS_SMALL_SPRITE_WIDTH, CACTUS_SMALL_SPRITE_HEIGHT};
 		raylib.DrawTextureRec(sprite_tex, cactus_small_sprite_rect, cactus_small_position, raylib.WHITE);
 		
-		raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex_position, raylib.WHITE);
+		{
+			for r in trex_collision_boxes {
+				raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
+			}
+			
+			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex_position, raylib.WHITE);
+		}
 		
 		raylib.EndDrawing();
 		
