@@ -14,8 +14,8 @@ window_h: i32
 
 BG_COLOR_DAY :: 0xF7F7F7FF
 
-SPRITE_1X := #load("../assets/offline-sprite-1x.png")
-SPRITE_2X := #load("../assets/offline-sprite-2x.png")
+SPRITE_1X :: #load("../assets/offline-sprite-1x.png")
+SPRITE_2X :: #load("../assets/offline-sprite-2x.png")
 
 TREX_WIDTH_NORMAL :: 44
 TREX_WIDTH_DUCK :: 59
