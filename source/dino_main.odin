@@ -1,5 +1,6 @@
 package dino
 
+import "core:os/os2"
 import "core:math/rand"
 import "vendor:raylib"
 
@@ -7,6 +8,9 @@ TARGET_FPS :: 60
 
 DEFAULT_WINDOW_W :: 600
 DEFAULT_WINDOW_H :: 150
+
+window_w: i32
+window_h: i32
 
 BG_COLOR_DAY :: 0xF7F7F7FF
 
@@ -74,8 +78,15 @@ Sprite_Coordinates :: struct {
 }
 
 main :: proc() {
+	window_w, window_h = DEFAULT_WINDOW_W, DEFAULT_WINDOW_H;
+	for arg in os2.args {
+		if arg == "-2x" {
+			window_w, window_h = 2*DEFAULT_WINDOW_W, 2*DEFAULT_WINDOW_H;
+		}
+	}
+	
 	raylib.SetTraceLogLevel(.ERROR);
-	raylib.InitWindow(DEFAULT_WINDOW_W, DEFAULT_WINDOW_H, "A window");
+	raylib.InitWindow(window_w, window_h, "A window");
 	raylib.SetExitKey(raylib.KeyboardKey.KEY_NULL);
 	raylib.SetTargetFPS(TARGET_FPS);
 	
