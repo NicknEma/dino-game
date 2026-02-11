@@ -115,10 +115,9 @@ main :: proc() {
 		trex_sprite_rect_crashed: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 220, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
 		trex_sprite_rect_jumping: raylib.Rectangle = {sprite_coordinates_lores.trex.x + 0, sprite_coordinates_lores.trex.y, TREX_WIDTH_NORMAL, TREX_HEIGHT_NORMAL};
 		trex_sprite_rect_ducking: []raylib.Rectangle = {
-			{sprite_coordinates_lores.trex.x + 262, sprite_coordinates_lores.trex.y, TREX_WIDTH_DUCK, TREX_HEIGHT_DUCK},
-			{sprite_coordinates_lores.trex.x + 321, sprite_coordinates_lores.trex.y, TREX_WIDTH_DUCK, TREX_HEIGHT_DUCK},
+			{sprite_coordinates_lores.trex.x + 262, sprite_coordinates_lores.trex.y + 17, TREX_WIDTH_DUCK, TREX_HEIGHT_DUCK},
+			{sprite_coordinates_lores.trex.x + 321, sprite_coordinates_lores.trex.y + 17, TREX_WIDTH_DUCK, TREX_HEIGHT_DUCK},
 		};
-		
 		
 		trex_sprite_rect: raylib.Rectangle;
 		if !game_started {
@@ -137,7 +136,15 @@ main :: proc() {
 			jumping_ms_per_frame := 60;
 			ducking_ms_per_frame := 8;
 			
-			trex_sprite_rect = trex_sprite_rect_running[(frame_count_since_attempt_start / running_ms_per_frame) % len(trex_sprite_rect_running)];
+			sprite_rect := trex_sprite_rect_running;
+			ms_per_frame := running_ms_per_frame;
+			if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
+				sprite_rect = trex_sprite_rect_ducking;
+				ms_per_frame = ducking_ms_per_frame;
+				trex_position.y += 17;
+			}
+			
+			trex_sprite_rect = sprite_rect[(frame_count_since_attempt_start / ms_per_frame) % len(sprite_rect)];
 		}
 		
 		raylib.BeginDrawing();
