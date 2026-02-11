@@ -181,7 +181,6 @@ main :: proc() {
 	
 	current_speed := f32(0);
 	
-	game_started := false;
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
 	attempt_count := 0;
@@ -199,6 +198,8 @@ main :: proc() {
 			}
 		}
 		
+		// ground y = window height - trex height - bottom pad
+		// min jump height = ground y - MIN_JUMP_HEIGHT
 		trex_position: [2]f32 = {50, 95};
 		trex_y_shift: f32 = 17;
 		trex_collision_boxes: []raylib.Rectangle;
@@ -213,9 +214,7 @@ main :: proc() {
 			
 			rect_slice: []raylib.Rectangle;
 			ms_per_frame: int;
-			if !game_started {
-				trex_status = .Waiting;
-				
+			if trex_status == .Waiting {
 				rect_slice = sprite_rects.trex_waiting[:1]; // Temporary :1
 				ms_per_frame = waiting_ms_per_frame;
 				
@@ -223,14 +222,49 @@ main :: proc() {
 					current_speed = 1;
 					trex_status = .Running;
 					
-					game_started = true;
+					// play jump sound
+					// set distance meter = 0
+					// set distance ran = 0
+					// set speed to initial
+					// set accel = 0
+					// reset trex position
+					// clear hazard queue
+					// reset ground
+					
 					frame_count_since_attempt_start = 0;
+					time_since_attempt_start = 0;
 					attempt_count += 1;
 				}
+			} else if trex_status == .Crashed {
+				// save high score
+				
+				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) {
+					// restart
+				}
 			} else {
+				// if playing intro, play intro, else:
+				
 				rect_slice = sprite_rects.trex_running[:];
 				ms_per_frame = running_ms_per_frame;
 				trex_collision_boxes = trex_collision_boxes_running[:];
+				
+				// if pressing up && not jumping && not ducking,
+				//  start jump
+				//  play jump sound
+				// else if pressing down
+				//  if jumping
+				//   drop faster
+				//  else if not jumping && not ducking
+				//   start duck
+				
+				// if release up && jumping
+				//  end jump raise, start drop
+				// else
+				//  if release down
+				//   if jumping, stop dropping faster
+				//   if ducking, stop duck
+				
+				// if jumping, update jump
 				
 				if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
 					trex_status = .Ducking;
@@ -243,6 +277,28 @@ main :: proc() {
 				} else {
 					trex_status = .Running;
 				}
+				
+				// update obstacles
+				// check collisions
+				
+				// NOTE(ema): Don't do this before collision checking, because *technically*
+				// you haven't run the distance if you crashed
+				// distance ran += current speed * dt / ms_per_frame
+				// if current speed < max speed
+				//  current speed += accel
+				// update high score
+				// play new high score sound
+				
+				// if trex changed status
+				//  animation frame index = 0
+				//  if status == waiting
+				//   waiting anim start time = current time
+				//   blink delay = random() * BLINK_TIMING
+				// if status == waiting
+				//  if time - waiting anim start time >= blink delay
+				//   set blink sprite
+				//   set new blink delay
+				//   waiting anim start time = current time
 			}
 			
 			rect_index := (frame_count_since_attempt_start / ms_per_frame) % len(rect_slice);
