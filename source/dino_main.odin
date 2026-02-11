@@ -269,7 +269,6 @@ main :: proc() {
 					current_speed = 1;
 					trex_status = .Running;
 					
-					// play jump sound
 					// set distance meter = 0
 					// set distance ran = 0
 					// set speed to initial
@@ -286,6 +285,10 @@ main :: proc() {
 				// save high score
 				
 				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) {
+					if !mute_sfx {
+						raylib.PlaySound(sound_press);
+					}
+					
 					// restart
 				}
 			} else {
