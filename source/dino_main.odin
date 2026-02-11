@@ -154,6 +154,9 @@ main :: proc() {
 	sprite_img := raylib.LoadImageFromMemory(".png", raw_data(sprite_bytes), cast(i32)len(sprite_bytes));
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
+	Trex_Status :: enum { Waiting, Running, Ducking, Jumping, Crashed };
+	trex_status := Trex_Status.Waiting;
+	
 	// Coordinates on screen of where each sprite starts
 	ground_x: [SCREEN_GROUND_NUM_SECTIONS]i32;
 	// Coordinates in the spritesheet of where each sprite starts
@@ -170,6 +173,7 @@ main :: proc() {
 	game_started := false;
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
+	attempt_count := 0;
 	
 	for !raylib.WindowShouldClose() {
 		dt := raylib.GetFrameTime();
@@ -188,24 +192,32 @@ main :: proc() {
 			rect_slice: []raylib.Rectangle;
 			ms_per_frame: int;
 			if !game_started {
+				trex_status = .Waiting;
+				
 				rect_slice = sprite_rects.trex_waiting[:1]; // Temporary :1
 				ms_per_frame = waiting_ms_per_frame;
 				
-				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) {
+				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) {
 					current_speed = 1;
+					trex_status = .Running;
 					
 					game_started = true;
 					frame_count_since_attempt_start = 0;
+					attempt_count += 1;
 				}
 			} else {
 				rect_slice = sprite_rects.trex_running[:];
 				ms_per_frame = running_ms_per_frame;
 				
 				if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
+					trex_status = .Ducking;
+					
 					rect_slice = sprite_rects.trex_ducking[:];
 					ms_per_frame = ducking_ms_per_frame;
 					
 					trex_position.y += trex_y_shift;
+				} else {
+					trex_status = .Running;
 				}
 			}
 			
