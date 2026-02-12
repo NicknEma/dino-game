@@ -410,7 +410,8 @@ main :: proc() {
 			if mute_sfx {
 				raylib.DrawText("Mute on", window_w / 2, 10, 20, raylib.BLACK);
 			}
-			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("ms per frame: %v", MS_PER_FRAME)),
+			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("ms per frame: %v", MS_PER_FRAME),
+													 context.temp_allocator),
 							10, 10, 20, raylib.BLACK);
 		}
 		
