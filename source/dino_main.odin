@@ -3,6 +3,7 @@ package dino
 import "base:runtime"
 
 import "core:os/os2"
+import "core:fmt"
 import "core:strings"
 import "core:math/rand"
 import "core:encoding/base64"
@@ -10,6 +11,7 @@ import "core:encoding/base64"
 import "vendor:raylib"
 
 TARGET_FPS :: 60
+MS_PER_FRAME :: 1000 / TARGET_FPS
 
 DEFAULT_WINDOW_W :: 600
 DEFAULT_WINDOW_H :: 150
@@ -218,10 +220,13 @@ main :: proc() {
 	sprite_1x_ground_x[0] = SPRITE_1X_GROUND_X;
 	sprite_1x_ground_x[1] = SPRITE_1X_GROUND_X + SPRITE_1X_GROUND_SEC_W;
 	
-	current_speed := f32(0);
-	
+	// Attempt info
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
+	current_speed := f32(0);
+	jump_count := 0;
+	
+	// Session info
 	attempt_count := 0;
 	
 	mute_sfx := false;
@@ -265,9 +270,10 @@ main :: proc() {
 				rect_slice = sprite_rects.trex_waiting[:1]; // Temporary :1
 				ms_per_frame = waiting_ms_per_frame;
 				
-				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) {
-					current_speed = 1;
+				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) ||
+					raylib.IsMouseButtonPressed(raylib.MouseButton.LEFT) {
 					trex_status = .Running;
+					attempt_count += 1;
 					
 					// set distance meter = 0
 					// set distance ran = 0
@@ -279,7 +285,8 @@ main :: proc() {
 					
 					frame_count_since_attempt_start = 0;
 					time_since_attempt_start = 0;
-					attempt_count += 1;
+					current_speed = 1;
+					jump_count = 0;
 				}
 			} else if trex_status == .Crashed {
 				// save high score
@@ -403,6 +410,8 @@ main :: proc() {
 			if mute_sfx {
 				raylib.DrawText("Mute on", window_w / 2, 10, 20, raylib.BLACK);
 			}
+			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("ms per frame: %v", MS_PER_FRAME)),
+							10, 10, 20, raylib.BLACK);
 		}
 		
 		raylib.EndDrawing();
