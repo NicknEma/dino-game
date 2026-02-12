@@ -223,8 +223,29 @@ main :: proc() {
 	// Attempt info
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
-	current_speed := f32(0);
+	current_hor_speed := f32(0);
 	jump_count := 0;
+	
+	// Simulation state
+	TREX_DEFAULT_POSITION :: [2]f32 {50, 95}
+	TREX_Y_SHIFT_DUCK :: 17;
+	TREX_HEIGHT_NORMAL :: 47;
+	TREX_MAX_JUMP_HEIGHT :: 30;
+	TREX_MIN_JUMP_HEIGHT :: 30;
+	TREX_DROP_VELOCITY :: -5;
+	TREX_INITIAL_SPEED :: 6;
+	TREX_X_ACCELERATION :: 0.001;
+	TREX_INITIAL_JUMP_VELOCITY :: 12;
+	TREX_MAX_SPEED :: 13;
+	
+	BOTTOM_PAD :: 10;
+	
+	trex_x := f32(TREX_DEFAULT_POSITION.x);
+	trex_current_y := f32(window_h - TREX_HEIGHT_NORMAL - BOTTOM_PAD);
+	trex_collision_boxes: []raylib.Rectangle;
+	trex_jump_velocity := f32(0);
+	trex_reached_min_height := false;
+	trex_distance_ran := f32(0);
 	
 	// Session info
 	attempt_count := 0;
@@ -250,14 +271,12 @@ main :: proc() {
 			}
 		}
 		
-		// ground y = window height - trex height - bottom pad
-		// min jump height = ground y - MIN_JUMP_HEIGHT
-		trex_position: [2]f32 = {50, 95};
-		trex_y_shift: f32 = 17;
-		trex_collision_boxes: []raylib.Rectangle;
+		trex_ground_y := f32(window_h - TREX_HEIGHT_NORMAL - BOTTOM_PAD);
+		trex_min_jump_height := f32(trex_ground_y - TREX_MIN_JUMP_HEIGHT);
 		
 		trex_sprite_rect: raylib.Rectangle;
 		{
+			// These are actually frames per ms
 			running_ms_per_frame := 12;
 			waiting_ms_per_frame := 3;
 			crashed_ms_per_frame := 60;
@@ -285,7 +304,7 @@ main :: proc() {
 					
 					frame_count_since_attempt_start = 0;
 					time_since_attempt_start = 0;
-					current_speed = 1;
+					current_hor_speed = 1;
 					jump_count = 0;
 				}
 			} else if trex_status == .Crashed {
@@ -305,34 +324,82 @@ main :: proc() {
 				ms_per_frame = running_ms_per_frame;
 				trex_collision_boxes = trex_collision_boxes_running[:];
 				
-				// if pressing up && not jumping && not ducking,
-				//  start jump
-				//  play jump sound
-				// else if pressing down
-				//  if jumping
-				//   drop faster
-				//  else if not jumping && not ducking
-				//   start duck
-				
-				// if release up && jumping
-				//  end jump raise, start drop
-				// else
-				//  if release down
-				//   if jumping, stop dropping faster
-				//   if ducking, stop duck
-				
-				// if jumping, update jump
-				
-				if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
-					trex_status = .Ducking;
+				// TODO(ema): Maybe loop over this switch until prev status == status? so
+				// it doesn't feel like the inputs are happening 1 frame later
+				#partial switch trex_status {
+					case .Running: {
+						trex_current_y = f32(window_h - TREX_HEIGHT_NORMAL - BOTTOM_PAD);
+						
+						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
+							trex_status = .Ducking;
+						}
+						
+						if raylib.IsKeyPressed(raylib.KeyboardKey.UP) && trex_status != .Ducking {
+							raylib.PlaySound(sound_press);
+							trex_status = .Jumping;
+							
+							TREX_JUMP_VELOCITY :: -10;
+							trex_jump_velocity = TREX_JUMP_VELOCITY - (current_hor_speed / 10);
+							trex_reached_min_height = false;
+						}
+					}
 					
-					rect_slice = sprite_rects.trex_ducking[:];
-					ms_per_frame = ducking_ms_per_frame;
+					case .Ducking: {
+						rect_slice = sprite_rects.trex_ducking[:];
+						ms_per_frame = ducking_ms_per_frame;
+						
+						// trex_current_y += TREX_Y_SHIFT_DUCK;
+						trex_current_y = f32(window_h - TREX_HEIGHT_NORMAL - BOTTOM_PAD + TREX_Y_SHIFT_DUCK);
+						trex_collision_boxes = trex_collision_boxes_ducking[:];
+						
+						if raylib.IsKeyUp(raylib.KeyboardKey.DOWN) {
+							trex_status = .Running;
+						}
+					}
 					
-					trex_position.y += trex_y_shift;
-					trex_collision_boxes = trex_collision_boxes_ducking[:];
-				} else {
-					trex_status = .Running;
+					case .Jumping: {
+						rect_slice = sprite_rects.trex_jumping[:];
+						ms_per_frame = jumping_ms_per_frame;
+						
+						actual_ms_per_frame := 1.0 / f32(jumping_ms_per_frame);
+						z := dt / actual_ms_per_frame;
+						
+						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
+							SPEED_DROP_COEFFICIENT :: 3;
+							trex_current_y += trex_jump_velocity * z * SPEED_DROP_COEFFICIENT;
+							// speed drop = true
+						} else {
+							trex_current_y += trex_jump_velocity * z;
+						}
+						
+						GRAVITY :: 0.6;
+						trex_jump_velocity += GRAVITY * z;
+						
+						when true {
+							if trex_current_y < trex_min_jump_height { // || speed drop
+								trex_reached_min_height = true;
+							}
+							
+							if trex_current_y < TREX_MAX_JUMP_HEIGHT { // || speed drop
+								if trex_reached_min_height && trex_jump_velocity < TREX_DROP_VELOCITY {
+									trex_jump_velocity = TREX_DROP_VELOCITY;
+								}
+							}
+							
+							if trex_current_y > trex_ground_y {
+								trex_current_y = trex_ground_y;
+								trex_jump_velocity = 0;
+								trex_status = .Running;
+								// @Maybe add: if UP pressed, keep status = jumping, else set status = running
+							}
+						}
+					}
+					
+					case: {
+						raylib.TraceLog(.ERROR, strings.clone_to_cstring(fmt.tprintf("Invalid switch case %v",
+																					 trex_status),
+																		 context.temp_allocator));
+					}
 				}
 				
 				// update obstacles
@@ -340,9 +407,11 @@ main :: proc() {
 				
 				// NOTE(ema): Don't do this before collision checking, because *technically*
 				// you haven't run the distance if you crashed
-				// distance ran += current speed * dt / ms_per_frame
-				// if current speed < max speed
-				//  current speed += accel
+				trex_distance_ran += current_hor_speed * dt / MS_PER_FRAME;
+				if current_hor_speed < TREX_MAX_SPEED {
+					current_hor_speed += TREX_X_ACCELERATION;
+				}
+				
 				// update high score
 				// play new high score sound
 				
@@ -368,12 +437,13 @@ main :: proc() {
 		}
 		
 		raylib.BeginDrawing();
+		
 		bg_color := raylib.GetColor(BG_COLOR_DAY);
 		raylib.ClearBackground(bg_color);
 		
 		// Draw ground
 		{
-			delta := cast(i32)(current_speed * dt * 200);
+			delta := cast(i32)(current_hor_speed * dt * 200);
 			for _, dst_i in ground_x {
 				dst_x := ground_x[dst_i];
 				dst_x -= delta;
@@ -399,20 +469,39 @@ main :: proc() {
 		cactus_small_sprite_rect: raylib.Rectangle = {SPRITE_1X_COORDINATES.cactus_small.x, SPRITE_1X_COORDINATES.cactus_small.y, CACTUS_SMALL_SPRITE_WIDTH, CACTUS_SMALL_SPRITE_HEIGHT};
 		raylib.DrawTextureRec(sprite_tex, cactus_small_sprite_rect, cactus_small_position, raylib.WHITE);
 		
-		raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex_position, raylib.WHITE);
+		raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_x, trex_current_y}, raylib.WHITE);
 		
 		when ODIN_DEBUG {
+			text_y := i32(10);
 			if debug_draw_hitboxes {
 				for r in trex_collision_boxes {
 					raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
 				}
+				raylib.DrawLineV({0, trex_current_y}, {f32(window_w), trex_current_y}, raylib.GREEN);
+				raylib.DrawLineV({0, trex_ground_y}, {f32(window_w), trex_ground_y}, raylib.RED);
+				raylib.DrawLineV({0, trex_min_jump_height}, {f32(window_w), trex_min_jump_height}, raylib.BLUE);
+				raylib.DrawText("trex current y", 10, i32(trex_current_y + 5), 20, raylib.GREEN);
+				raylib.DrawText("trex ground y", window_w / 2, i32(trex_ground_y + 5), 20, raylib.RED);
 			}
 			if mute_sfx {
 				raylib.DrawText("Mute on", window_w / 2, 10, 20, raylib.BLACK);
 			}
 			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("ms per frame: %v", MS_PER_FRAME),
 													 context.temp_allocator),
-							10, 10, 20, raylib.BLACK);
+							10, text_y, 10, raylib.BLACK);
+			text_y += 15;
+			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("trex status: %v", trex_status),
+													 context.temp_allocator),
+							10, text_y, 10, raylib.BLACK);
+			text_y += 15;
+			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("distance ran: %v", trex_distance_ran),
+													 context.temp_allocator),
+							10, text_y, 10, raylib.BLACK);
+			text_y += 15;
+			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("trex_min_jump_height: %v", trex_min_jump_height),
+													 context.temp_allocator),
+							10, text_y, 10, raylib.BLUE);
+			text_y += 15;
 		}
 		
 		raylib.EndDrawing();
