@@ -145,6 +145,57 @@ Sprite_Coordinates :: struct {
 	text: [2]f32
 }
 
+Obstacle_Tag :: enum { Cactus_Small, Cactus_Large, Pterodactyl }
+Obstacle_Template :: struct {
+	tag: Obstacle_Tag,
+	width: f32,
+	height: f32,
+	possible_y_positions: []f32,
+	multiple_speed: f32, // minimum required speed for this obstacle to appear in groups TODO(ema): Better name
+	min_gap: f32,
+	min_speed: f32,
+	collision_boxes: []raylib.Rectangle,
+	// num_frames,
+	// frame_rate,
+	speed_offset: f32,
+}
+
+OBSTACLE_TEMPLATES :: [?]Obstacle_Template {
+	{
+		tag = .Cactus_Small,
+		width = 17,
+		height = 35,
+		possible_y_positions = {105},
+		multiple_speed = 4,
+		min_gap = 120,
+		min_speed = 0,
+		collision_boxes = { {0,7,5,27}, {4,0,6,34}, {10,4,7,14} }
+	},
+	
+	{
+		tag = .Cactus_Large,
+		width = 25,
+		height = 50,
+		possible_y_positions = {90},
+		multiple_speed = 7,
+		min_gap = 120,
+		min_speed = 0,
+		collision_boxes = { {0,12,7,38}, {8,0,7,49}, {13,10,10,38} }
+	},
+	
+	{
+		tag = .Pterodactyl,
+		width = 46,
+		height = 40,
+		possible_y_positions = {100, 75, 50},
+		multiple_speed = 999, // TODO(ema): Review this
+		min_gap = 150,
+		min_speed = 8.5,
+		collision_boxes = { {15,15,16,5}, {18,21,24,6}, {2,14,4,3}, {6,10,4,7}, {10,8,6,9} },
+		speed_offset = 0.8,
+	}
+}
+
 @(disabled=!ODIN_DEBUG)
 write_sound_assets_to_disk :: proc() {
 	// NOTE(ema): This was used to generate the asset files from the strings found on the
@@ -248,6 +299,8 @@ main :: proc() {
 	trex_distance_ran := f32(0);
 	speed_drop := false;
 	
+	GAP_COEFFICIENT :: 0.6;
+	
 	// Session info
 	attempt_count := 0;
 	
@@ -302,6 +355,7 @@ main :: proc() {
 					// reset trex position
 					// clear hazard queue
 					// reset ground
+					// add cloud
 					
 					frame_count_since_attempt_start = 0;
 					time_since_attempt_start = 0;
@@ -409,7 +463,48 @@ main :: proc() {
 					}
 				}
 				
-				// update obstacles
+				// update horizon line (ground)
+				// update clouds
+				
+				// update obstacles:
+				//  for each obstacle
+				//   update it
+				//   if it should be removed
+				//    remove it
+				// if num obstacles > 0
+				//  d := last obstacle
+				//  
+				// else
+				//  add new obstacle
+				
+				// MAX_OBSTACLE_DUPLICATION :: 2
+				// MAX_OBSTACLE_LENGTH :: 3
+				// add new obstacle:
+				//  randomly select one of [cactus small, cactus large, pterodactyl]
+				//  if (current speed < obstacle.required min speed ||
+				//      num obstacles of that type in the obstacle history >= max obstacle duplication)
+				//   select again
+				//  make obstacle
+				//  add it to queue
+				//  add it to history
+				//  if history length > 1
+				//   clear history starting at MAX_OBSTACLE_DUPLICATION
+				
+				// make obstacle(type):
+				// randomly select size in [1, MAX_OBSTACLE_LENGTH] range
+				// based on type and size, clone collision boxes from config
+				// ...
+				// width (in pixels I guess) = type config.width * this.size
+				// xpos = horizon width - this.width
+				// ypos = randomly select out of possible y positions for the obstacle type
+				// if size > 1
+				//  adjust following boxes:
+				//  [1].width = this.width - [0].width - [2].width
+				//  [2].x = this.width - [2].width
+				// if type config.speed offset
+				//  this.speed offset = type config.speed offset * (random() > 0.5 ? -1 : +1)
+				// this.gap = randomly compute gap using formula
+				
 				// check collisions
 				
 				// NOTE(ema): Don't do this before collision checking, because *technically*
@@ -483,6 +578,14 @@ main :: proc() {
 			if debug_draw_hitboxes {
 				for r in trex_collision_boxes {
 					raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
+				}
+				templates := OBSTACLE_TEMPLATES;
+				for t, ti in templates {
+					for b, bi in t.collision_boxes {
+						r := b;
+						r.x += 100 * f32(ti + 1);
+						raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
+					}
 				}
 				raylib.DrawLineV({0, trex_current_y}, {f32(window_w), trex_current_y}, raylib.GREEN);
 				raylib.DrawLineV({0, trex_ground_y}, {f32(window_w), trex_ground_y}, raylib.RED);
