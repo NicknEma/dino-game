@@ -246,6 +246,7 @@ main :: proc() {
 	trex_jump_velocity := f32(0);
 	trex_reached_min_height := false;
 	trex_distance_ran := f32(0);
+	speed_drop := false;
 	
 	// Session info
 	attempt_count := 0;
@@ -365,6 +366,11 @@ main :: proc() {
 						z := dt / actual_ms_per_frame;
 						
 						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
+							if !speed_drop {
+								trex_jump_velocity = 1;
+								speed_drop = true;
+							}
+							
 							SPEED_DROP_COEFFICIENT :: 3;
 							trex_current_y += trex_jump_velocity * z * SPEED_DROP_COEFFICIENT;
 							// speed drop = true
@@ -390,6 +396,7 @@ main :: proc() {
 								trex_current_y = trex_ground_y;
 								trex_jump_velocity = 0;
 								trex_status = .Running;
+								speed_drop = false;
 								// @Maybe add: if UP pressed, keep status = jumping, else set status = running
 							}
 						}
