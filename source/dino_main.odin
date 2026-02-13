@@ -491,21 +491,6 @@ main :: proc() {
 				//  if history length > 1
 				//   clear history starting at MAX_OBSTACLE_DUPLICATION
 				
-				// make obstacle(type):
-				// randomly select size in [1, MAX_OBSTACLE_LENGTH] range
-				// based on type and size, clone collision boxes from config
-				// ...
-				// width (in pixels I guess) = type config.width * this.size
-				// xpos = horizon width - this.width
-				// ypos = randomly select out of possible y positions for the obstacle type
-				// if size > 1
-				//  adjust following boxes:
-				//  [1].width = this.width - [0].width - [2].width
-				//  [2].x = this.width - [2].width
-				// if type config.speed offset
-				//  this.speed offset = type config.speed offset * (random() > 0.5 ? -1 : +1)
-				// this.gap = randomly compute gap using formula
-				
 				Obstacle :: struct {
 					collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
 					on_screen_position: [2]f32,
@@ -535,7 +520,7 @@ main :: proc() {
 					}
 					
 					width := template.width * f32(length);
-					x_pos := f32(600); // TODO(ema): pass in
+					x_pos := f32(600); // TODO(ema): pass in, (horizon width - this.width)
 					y_pos := template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
 					#no_bounds_check if length > 1 {
 						#assert(len(obstacle.collision_boxes.data) >= 3);
