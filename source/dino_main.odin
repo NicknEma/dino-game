@@ -147,7 +147,6 @@ Sprite_Coordinates :: struct {
 
 Obstacle_Tag :: enum { Cactus_Small, Cactus_Large, Pterodactyl }
 Obstacle_Template :: struct {
-	tag: Obstacle_Tag,
 	width: f32,
 	height: f32,
 	possible_y_positions: []f32,
@@ -160,9 +159,8 @@ Obstacle_Template :: struct {
 	speed_offset: f32,
 }
 
-OBSTACLE_TEMPLATES :: [?]Obstacle_Template {
-	{
-		tag = .Cactus_Small,
+OBSTACLE_TEMPLATES :: [len(Obstacle_Tag)]Obstacle_Template {
+	Obstacle_Tag.Cactus_Small = {
 		width = 17,
 		height = 35,
 		possible_y_positions = {105},
@@ -172,8 +170,7 @@ OBSTACLE_TEMPLATES :: [?]Obstacle_Template {
 		collision_boxes = { {0,7,5,27}, {4,0,6,34}, {10,4,7,14} }
 	},
 	
-	{
-		tag = .Cactus_Large,
+	Obstacle_Tag.Cactus_Large = {
 		width = 25,
 		height = 50,
 		possible_y_positions = {90},
@@ -183,8 +180,7 @@ OBSTACLE_TEMPLATES :: [?]Obstacle_Template {
 		collision_boxes = { {0,12,7,38}, {8,0,7,49}, {13,10,10,38} }
 	},
 	
-	{
-		tag = .Pterodactyl,
+	Obstacle_Tag.Pterodactyl = {
 		width = 46,
 		height = 40,
 		possible_y_positions = {100, 75, 50},
