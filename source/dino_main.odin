@@ -382,11 +382,11 @@ main :: proc() {
 						trex_jump_velocity += GRAVITY * z;
 						
 						when true {
-							if trex_current_y < trex_min_jump_height { // || speed drop
+							if trex_current_y < trex_min_jump_height || speed_drop {
 								trex_reached_min_height = true;
 							}
 							
-							if trex_current_y < TREX_MAX_JUMP_HEIGHT { // || speed drop
+							if trex_current_y < TREX_MAX_JUMP_HEIGHT || speed_drop {
 								if trex_reached_min_height && trex_jump_velocity < TREX_DROP_VELOCITY {
 									trex_jump_velocity = TREX_DROP_VELOCITY;
 								}
