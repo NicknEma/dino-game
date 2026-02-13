@@ -4,6 +4,7 @@ import "base:runtime"
 
 import "core:os/os2"
 import "core:fmt"
+import "core:slice"
 import "core:strings"
 import "core:math/rand"
 import "core:container/small_array"
@@ -298,10 +299,19 @@ main :: proc() {
 	
 	GAP_COEFFICIENT :: 0.6;
 	
+	// Obstacles
+	Obstacle :: struct {
+		collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
+		on_screen_position: [2]f32,
+		width: f32, // TODO(ema): What's the use of this as a field?
+		gap: f32, // TODO(ema): Do I have a better name for this?
+	}
+	MAX_OBSTACLES :: 5;
 	MAX_OBSTACLE_LENGTH :: 3;
 	MAX_OBSTACLE_DUPLICATION :: 2;
 	OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
 	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
+	obstacle_buffer: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
 	
 	// Session info
 	attempt_count := 0;
@@ -357,6 +367,7 @@ main :: proc() {
 					// reset trex position
 					// clear hazard queue
 					small_array.clear(&obstacle_history);
+					small_array.clear(&obstacle_buffer);
 					// reset ground
 					// add cloud
 					
@@ -480,22 +491,34 @@ main :: proc() {
 				// else
 				//  add new obstacle
 				
-				// add new obstacle:
-				//  randomly select one of [cactus small, cactus large, pterodactyl]
-				//  if (current speed < obstacle.required min speed ||
-				//      num obstacles of that type in the obstacle history >= max obstacle duplication)
-				//   select again
-				//  make obstacle
-				//  add it to queue
-				//  add it to history
-				//  if history length > 1
-				//   clear history starting at MAX_OBSTACLE_DUPLICATION
+				append_obstacle(&obstacle_history, &obstacle_buffer, current_hor_speed);
 				
-				Obstacle :: struct {
-					collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
-					on_screen_position: [2]f32,
-					width: f32, // TODO(ema): What's the use of this as a field?
-					gap: f32, // TODO(ema): Do I have a better name for this?
+				append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
+										buffer: ^small_array.Small_Array($B, Obstacle),
+										current_speed: f32) {
+					tag: Obstacle_Tag = ---;
+					for it in 0..<10 {
+						tag = rand.choice_enum(Obstacle_Tag);
+						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION {
+							break;
+						}
+					}
+					
+					obstacle := make_obstacle(tag, current_speed);
+					if !small_array.push_back(buffer, obstacle) {
+						raylib.TraceLog(.ERROR, "Tried to add an obstacle to the buffer, but it was full");
+					}
+					force_push_front(history, tag);
+					
+					force_push_front :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
+						if a != nil {
+							if small_array.len(a^) > 0 {
+								evicted = small_array.pop_back(a);
+							}
+							small_array.push_front(a, item);
+						}
+						return evicted;
+					}
 				}
 				
 				make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32) -> Obstacle {
@@ -542,8 +565,6 @@ main :: proc() {
 					obstacle.on_screen_position = {x_pos, y_pos};
 					return obstacle;
 				}
-				
-				_ = make_obstacle(.Cactus_Small, 1);
 				
 				// check collisions
 				
