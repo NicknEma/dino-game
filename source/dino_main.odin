@@ -506,6 +506,60 @@ main :: proc() {
 				//  this.speed offset = type config.speed offset * (random() > 0.5 ? -1 : +1)
 				// this.gap = randomly compute gap using formula
 				
+				Obstacle :: struct {
+					collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
+					on_screen_position: [2]f32,
+					width: f32, // TODO(ema): What's the use of this as a field?
+					gap: f32, // TODO(ema): Do I have a better name for this?
+				}
+				
+				make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32) -> Obstacle {
+					templates := OBSTACLE_TEMPLATES;
+					template  := templates[tag];
+					
+					obstacle: Obstacle;
+					small_array.push_back_elems(&obstacle.collision_boxes, ..template.collision_boxes);
+					
+					length: i32 = 1;
+					if current_speed >= template.multiple_speed {
+						length = rand.int32_range(0, MAX_OBSTACLE_LENGTH - 1);
+					}
+					
+					int32_range_clamped :: proc(lo, hi: i32, gen := context.random_generator) -> (val: i32) {
+						if lo < hi {
+							val = rand.int32_range(lo, hi, gen);
+						} else {
+							val = min(lo, hi);
+						}
+						return val;
+					}
+					
+					width := template.width * f32(length);
+					x_pos := f32(600); // TODO(ema): pass in
+					y_pos := template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
+					#no_bounds_check if length > 1 {
+						#assert(len(obstacle.collision_boxes.data) >= 3);
+						b := small_array.slice(&obstacle.collision_boxes);
+						
+						// When the obstacle is a compound obstacle, make adjustments to the
+						// collision boxes so that they cover the entire width
+						b[1].width = width - b[0].width - b[2].width;
+						b[2].x = width - b[2].width;
+					}
+					speed_offset := template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
+					MAX_GAP_COEFFICIENT :: 1.5;
+					min_gap := width * current_speed + template.min_gap * GAP_COEFFICIENT;
+					max_gap := min_gap * MAX_GAP_COEFFICIENT;
+					gap := rand.float32_range(min_gap, max_gap);
+					
+					obstacle.gap = gap;
+					obstacle.width = width;
+					obstacle.on_screen_position = {x_pos, y_pos};
+					return obstacle;
+				}
+				
+				_ = make_obstacle(.Cactus_Small, 1);
+				
 				// check collisions
 				
 				// NOTE(ema): Don't do this before collision checking, because *technically*
