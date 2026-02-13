@@ -483,7 +483,7 @@ main :: proc() {
 				// update obstacles:
 				//  for each obstacle
 				//   update it
-				//   if it should be removed
+				//   if it should be removed   TODO(ema): Is it necessary? See below todo
 				//    remove it
 				// if num obstacles > 0
 				//  d := last obstacle
@@ -491,7 +491,25 @@ main :: proc() {
 				// else
 				//  add new obstacle
 				
-				append_obstacle(&obstacle_history, &obstacle_buffer, current_hor_speed);
+				update_obstacles(&obstacle_history, &obstacle_buffer, current_hor_speed);
+				
+				// TODO(ema): Pass horizon width in and remove hardcoded values
+				// TODO(ema): Draw obstacles
+				// TODO(ema): Why not automatically evict obstacles as well? Why do separate checks?
+				update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
+										 buffer: ^small_array.Small_Array($B, Obstacle),
+										 current_speed: f32) {
+					// here remove old ones
+					
+					if small_array.len(buffer^) > 0 {
+						last := small_array.get(buffer^, small_array.len(buffer^) - 1);
+						if last.on_screen_position.x + last.width + last.gap < 600 {
+							append_obstacle(history, buffer, current_speed);
+						}
+					} else {
+						append_obstacle(history, buffer, current_speed);
+					}
+				}
 				
 				append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										buffer: ^small_array.Small_Array($B, Obstacle),
