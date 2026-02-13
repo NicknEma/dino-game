@@ -6,6 +6,7 @@ import "core:os/os2"
 import "core:fmt"
 import "core:strings"
 import "core:math/rand"
+import "core:container/small_array"
 import "core:encoding/base64"
 
 import "vendor:raylib"
@@ -297,6 +298,11 @@ main :: proc() {
 	
 	GAP_COEFFICIENT :: 0.6;
 	
+	MAX_OBSTACLE_LENGTH :: 3;
+	MAX_OBSTACLE_DUPLICATION :: 2;
+	OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
+	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
+	
 	// Session info
 	attempt_count := 0;
 	
@@ -350,6 +356,7 @@ main :: proc() {
 					// set accel = 0
 					// reset trex position
 					// clear hazard queue
+					small_array.clear(&obstacle_history);
 					// reset ground
 					// add cloud
 					
@@ -473,8 +480,6 @@ main :: proc() {
 				// else
 				//  add new obstacle
 				
-				// MAX_OBSTACLE_DUPLICATION :: 2
-				// MAX_OBSTACLE_LENGTH :: 3
 				// add new obstacle:
 				//  randomly select one of [cactus small, cactus large, pterodactyl]
 				//  if (current speed < obstacle.required min speed ||
