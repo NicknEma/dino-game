@@ -240,10 +240,6 @@ Obstacle :: struct {
 	anim_frames_per_second: f32,
 	current_anim_frame: i32,
 	
-	// width: f32, // TODO(ema): Not needed, can be obtained by multiplying the length with the default width found in the template
-	// num_frames: i32, // TODO(ema): Not needed, in the template
-	// sprite_rec: raylib.Rectangle, // TODO(ema): Not needed, can be looked up in the template using the tag
-	
 	using debug: Obstacle_Debug,
 }
 
@@ -341,7 +337,7 @@ main :: proc() {
 	TREX_MAX_JUMP_HEIGHT :: 30;
 	TREX_MIN_JUMP_HEIGHT :: 30;
 	TREX_DROP_VELOCITY :: -5;
-	TREX_INITIAL_RUN_SPEED :: 6; // TODO(ema): Fix moving ground and restore this to 6
+	TREX_INITIAL_RUN_SPEED :: 6;
 	TREX_X_ACCELERATION :: 0.001;
 	TREX_MAX_SPEED :: 13;
 	TREX_GRAVITY :: 0.6;
@@ -568,6 +564,7 @@ main :: proc() {
 				}
 				
 				// update horizon line (ground)
+				// TODO(ema): Fix this
 				{
 					delta := cast(i32)(trex_run_speed * TARGET_FPS * dt);
 					for _, dst_i in ground_x {
@@ -581,7 +578,9 @@ main :: proc() {
 				}
 				
 				// update clouds
+				// TODO(ema): Implement
 				
+				// TODO(ema): Inline these functions
 				update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
 				
 				update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
@@ -713,6 +712,7 @@ main :: proc() {
 				}
 				
 				// check collisions
+				// TODO(ema): Implement
 				
 				// NOTE(ema): Don't do this before collision checking, because *technically*
 				// you haven't run the distance if you crashed
