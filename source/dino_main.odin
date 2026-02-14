@@ -689,10 +689,6 @@ main :: proc() {
 			rect_index := (frame_count_since_attempt_start / trex_anim_frames_per_ms) % len(rect_slice);
 			trex_sprite_rect = rect_slice[rect_index];
 			trex_sprite_rect = shift_rect(trex_sprite_rect, sprite_coordinates.trex);
-			
-			shift_rect :: proc(r: raylib.Rectangle, amount: [2]f32) -> raylib.Rectangle {
-				return {r.x + amount.x, r.y + amount.y, r.width, r.height};
-			}
 		}
 		
 		raylib.BeginDrawing();
@@ -810,4 +806,8 @@ main :: proc() {
 		frame_count_since_attempt_start += 1;
 		time_since_attempt_start += dt;
 	}
+}
+
+shift_rect :: proc(r: raylib.Rectangle, amount: [2]f32) -> raylib.Rectangle {
+	return {r.x + amount.x, r.y + amount.y, r.width, r.height};
 }
