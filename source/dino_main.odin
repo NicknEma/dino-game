@@ -1,6 +1,7 @@
 package dino
 
 import "base:runtime"
+import "base:intrinsics"
 
 import os "core:os/os2"
 
@@ -616,18 +617,43 @@ main :: proc() {
 				append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										buffer: ^small_array.Small_Array($B, Obstacle),
 										current_speed: f32, horizon_w: f32) {
-					ALLOW_PTERODACTYLS :: true;
+					TAG_WEIGHTS :: [len(Obstacle_Tag)]int {
+						Obstacle_Tag.Cactus_Small = 4,
+						Obstacle_Tag.Cactus_Large = 4,
+						Obstacle_Tag.Pterodactyl  = 1
+					};
+					
+					weighted_choice_enum :: proc($T: typeid, weights: []int, gen := context.random_generator) -> T where intrinsics.type_is_enum(T) {
+						total := 0;
+						for weight in weights do total += weight;
+						
+						n := rand.int_max(total, gen);
+						
+						result: T;
+						weight_index := 0;
+						for field in T {
+							if weight_index >= len(weights) {
+								break;
+							}
+							weight := weights[weight_index];
+							if n < weight {
+								result = field;
+								break;
+							}
+							weight_index += 1;
+							n -= weight;
+						}
+						assert(weight_index < len(weights), "No suitable choice was found");
+						return result;
+					}
 					
 					tag: Obstacle_Tag = ---;
 					for it := 0;; it += 1 {
-						tag = rand.choice_enum(Obstacle_Tag);
+						tag_weights := TAG_WEIGHTS;
+						tag = weighted_choice_enum(Obstacle_Tag, tag_weights[:]);
 						templates := OBSTACLE_TEMPLATES;
 						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
 							current_speed >= templates[tag].min_speed {
-							when !ALLOW_PTERODACTYLS {
-								if tag == .Pterodactyl do continue;
-							}
-							
 							break;
 						}
 						if it == 100 {
