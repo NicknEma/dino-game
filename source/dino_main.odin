@@ -470,7 +470,9 @@ main :: proc() {
 						}
 						
 						if raylib.IsKeyPressed(raylib.KeyboardKey.UP) && trex_status != .Ducking {
-							raylib.PlaySound(sound_press);
+							if !mute_sfx {
+								raylib.PlaySound(sound_press);
+							}
 							trex_status = .Jumping;
 							
 							trex_jump_velocity = TREX_START_JUMP_VELOCITY - (trex_run_speed / 10.0);
