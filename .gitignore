@@ -47,3 +47,4 @@
 *.kra
 *.js
 *.wav
+/build/.vs
