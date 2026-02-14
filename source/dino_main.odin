@@ -552,6 +552,18 @@ main :: proc() {
 				}
 				
 				// update horizon line (ground)
+				{
+					delta := cast(i32)(trex_run_speed * TARGET_FPS * dt);
+					for _, dst_i in ground_x {
+						dst_x := ground_x[dst_i];
+						dst_x -= delta;
+						if dst_x < -SCREEN_GROUND_SEC_W {
+							dst_x += SCREEN_GROUND_W;
+						}
+						ground_x[dst_i] = dst_x;
+					}
+				}
+				
 				// update clouds
 				
 				update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
@@ -767,15 +779,7 @@ main :: proc() {
 		
 		// Draw ground
 		{
-			delta := cast(i32)(trex_run_speed * TARGET_FPS * dt);
-			for _, dst_i in ground_x {
-				dst_x := ground_x[dst_i];
-				dst_x -= delta;
-				if dst_x < -SCREEN_GROUND_SEC_W {
-					dst_x += SCREEN_GROUND_W;
-				}
-				ground_x[dst_i] = dst_x;
-				
+			for dst_x, dst_i in ground_x {
 				// This re-uses the same source coordinates for multiple portions of the screen.
 				// This makes it more complicated to randomly select them, as setting the
 				// coordinates for what is outside the screen will also (potentially) set them
