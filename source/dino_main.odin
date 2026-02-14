@@ -303,7 +303,7 @@ main :: proc() {
 	TREX_MAX_JUMP_HEIGHT :: 30;
 	TREX_MIN_JUMP_HEIGHT :: 30;
 	TREX_DROP_VELOCITY :: -5;
-	TREX_INITIAL_RUN_SPEED :: 1; // 6; TODO(ema): Fix moving ground and restore this to 6
+	TREX_INITIAL_RUN_SPEED :: 6; // TODO(ema): Fix moving ground and restore this to 6
 	TREX_X_ACCELERATION :: 0.001;
 	TREX_MAX_SPEED :: 13;
 	TREX_GRAVITY :: 0.6;
@@ -338,8 +338,20 @@ main :: proc() {
 		collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
 		sprite_rec: raylib.Rectangle,
 		on_screen_position: [2]f32,
+		speed_offset: f32,
 		width: f32,
 		gap: f32, // TODO(ema): Do I have a better name for this?
+		
+		using debug: Obstacle_Debug,
+	}
+	
+	when ODIN_DEBUG {
+		Obstacle_Debug :: struct {
+			color: raylib.Color,
+			tag: Obstacle_Tag,
+		}
+	} else {
+		Obstacle_Debug :: struct {}
 	}
 	
 	MAX_OBSTACLES :: 5;
@@ -379,7 +391,8 @@ main :: proc() {
 			Hotkeys,
 			Hitboxes,
 			Variables,
-			Mute_Sfx
+			Mute_Sfx,
+			Obstacle_Buffer
 		}
 		
 		debug_draw_flags := bit_set[Debug_Draw_Flag] { .Hotkeys, .Hitboxes, .Mute_Sfx };
@@ -541,29 +554,18 @@ main :: proc() {
 				// update horizon line (ground)
 				// update clouds
 				
-				// update obstacles:
-				//  for each obstacle
-				//   update it
-				//   if it should be removed   TODO(ema): Is it necessary? See below todo
-				//    remove it
-				// if num obstacles > 0
-				//  d := last obstacle
-				//  
-				// else
-				//  add new obstacle
-				
 				update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
 				
-				// TODO(ema): Pass horizon width in and remove hardcoded values
-				// TODO(ema): Draw obstacles
-				// TODO(ema): Why not automatically evict obstacles as well? Why do separate checks?
 				update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										 buffer: ^small_array.Small_Array($B, Obstacle),
 										 current_speed: f32, dt: f32, horizon_w: f32) {
 					passed_obstacles: small_array.Small_Array(B, int);
 					for &o, i in small_array.slice(buffer) {
-						delta := (current_speed * dt * 200); // TODO(ema): Remove @Hardcoded val
+						speed := current_speed + o.speed_offset;
+						delta := (speed * TARGET_FPS * dt);
 						o.on_screen_position.x -= delta;
+						
+						// 6 * 60 / 1000 * (1 / 60)
 						
 						is_visible_or_to_the_right := o.on_screen_position.x + o.width > 0;
 						if !is_visible_or_to_the_right {
@@ -571,15 +573,15 @@ main :: proc() {
 						}
 					}
 					
-					unordered_remove_elems(buffer, small_array.slice(&passed_obstacles));
+					ordered_remove_elems(buffer, small_array.slice(&passed_obstacles));
 					
-					unordered_remove_elems :: proc(a: ^$A/small_array.Small_Array($N, $T), indices: []int) {
+					ordered_remove_elems :: proc(a: ^$A/small_array.Small_Array($N, $T), indices: []int) {
 						if a != nil && N > 0 {
 							num_removed := 0;
 							for index in indices {
 								shifted_index := index - num_removed;
 								if shifted_index < small_array.len(a^) {
-									small_array.unordered_remove(a, shifted_index);
+									small_array.ordered_remove(a, shifted_index);
 									num_removed += 1;
 								}
 							}
@@ -601,11 +603,17 @@ main :: proc() {
 										buffer: ^small_array.Small_Array($B, Obstacle),
 										current_speed: f32, horizon_w: f32) {
 					tag: Obstacle_Tag = ---;
-					for it in 0..<10 {
+					for it := 0;; it += 1 {
 						tag = rand.choice_enum(Obstacle_Tag);
 						templates := OBSTACLE_TEMPLATES;
 						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
 							current_speed >= templates[tag].min_speed {
+							if tag != .Pterodactyl { // TODO(ema): Temporary
+								break;
+							}
+						}
+						if it == 10 {
+							tag = .Cactus_Small;
 							break;
 						}
 					}
@@ -619,6 +627,8 @@ main :: proc() {
 						force_push_back(buffer, obstacle);
 					}
 					force_push_front(history, tag);
+					
+					// fmt.println(small_array.slice(history));
 					
 					force_push_back :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
 						if a != nil && N > 0 {
@@ -650,7 +660,7 @@ main :: proc() {
 					
 					length: i32 = 1;
 					if current_speed >= template.multiple_speed {
-						length = rand.int32_range(0, MAX_COMPOUND_OBSTACLE_LENGTH - 1);
+						length = rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH - 1);
 					}
 					
 					int32_range_clamped :: proc(lo, hi: i32, gen := context.random_generator) -> (val: i32) {
@@ -663,6 +673,7 @@ main :: proc() {
 					}
 					
 					width := template.width * f32(length);
+					assert(width != 0);
 					x_pos := horizon_w; // TODO(ema): horizon width - this.width ??
 					y_pos := template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
 					#no_bounds_check if length > 1 {
@@ -701,9 +712,22 @@ main :: proc() {
 						}
 					}
 					
+					obstacle.speed_offset = template.speed_offset;
 					obstacle.gap = gap;
 					obstacle.width = width;
 					obstacle.on_screen_position = {x_pos, y_pos};
+					
+					when ODIN_DEBUG {
+						debug_colors := []raylib.Color {
+							raylib.RED, raylib.ORANGE, raylib.GREEN, raylib.SKYBLUE, raylib.PURPLE
+						};
+						@(static) debug_color_index := 0;
+						
+						obstacle.tag = tag;
+						obstacle.color = debug_colors[debug_color_index];
+						debug_color_index = (debug_color_index + 1) % len(debug_colors);
+					}
+					
 					return obstacle;
 				}
 				
@@ -743,7 +767,7 @@ main :: proc() {
 		
 		// Draw ground
 		{
-			delta := cast(i32)(trex_run_speed * dt * 200);
+			delta := cast(i32)(trex_run_speed * TARGET_FPS * dt);
 			for _, dst_i in ground_x {
 				dst_x := ground_x[dst_i];
 				dst_x -= delta;
@@ -804,8 +828,14 @@ main :: proc() {
 				for &o in small_array.slice(&obstacle_buffer) {
 					for b in small_array.slice(&o.collision_boxes) {
 						shifted := shift_rect(b, o.on_screen_position);
-						raylib.DrawRectangleLinesEx(shifted, 1, raylib.RED);
+						raylib.DrawRectangleLinesEx(shifted, 1, o.color);
 					}
+					
+					gap_start := o.on_screen_position.x + o.width;
+					gap_end := gap_start + o.gap;
+					gap_y := o.on_screen_position.y;
+					raylib.DrawLineV({gap_start, gap_y}, {gap_end, gap_y},
+									 o.color);
 				}
 				
 				when false {
@@ -826,7 +856,7 @@ main :: proc() {
 					fmt.tprintf("%v: %v", name_of(MS_PER_FRAME), MS_PER_FRAME),
 					fmt.tprintf("%v: %v", name_of(trex_status), trex_status),
 					fmt.tprintf("%v: %v", name_of(trex_distance_ran), trex_distance_ran),
-					fmt.tprintf("%v: %v", name_of(trex_min_jump_height), trex_min_jump_height),
+					fmt.tprintf("%v: %v", name_of(trex_run_speed), trex_run_speed),
 				};
 				
 				max_text_w := i32(0);
@@ -844,8 +874,41 @@ main :: proc() {
 			}
 			
 			if .Mute_Sfx in debug_draw_flags {
+				font_size := i32(10);
+				text_x := i32(10);
 				s := mute_sfx ? cstring("Mute on") : cstring("Mute off");
-				raylib.DrawText(s, global_debug_text_x, 10, 10, raylib.BLACK);
+				text_w := raylib.MeasureText(s, font_size);
+				raylib.DrawText(s, global_debug_text_x + text_x, 10, font_size, raylib.BLACK);
+				global_debug_text_x += text_x + text_w;
+			}
+			
+			if .Obstacle_Buffer in debug_draw_flags {
+				font_size := i32(10);
+				text_y := i32(10);
+				text_x := i32(10);
+				text_x += MeasureAndDrawText("[", global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
+				for i in 0..<small_array.cap(obstacle_buffer) {
+					o, exists := small_array.get_safe(obstacle_buffer, i);
+					s: cstring;
+					if exists {
+						s = strings.clone_to_cstring(fmt.tprintf("%v", o.gap), context.temp_allocator);
+					} else {
+						s = "-";
+					}
+					text_x += MeasureAndDrawText(s, global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
+					if i + 1 < small_array.cap(obstacle_buffer) {
+						text_x += MeasureAndDrawText(", ", global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
+					}
+				}
+				text_x += MeasureAndDrawText("]", global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
+				global_debug_text_x += text_x;
+			}
+			
+			MeasureAndDrawText :: proc(text: cstring, posX, posY, fontSize: i32, color: raylib.Color) -> i32 {
+				width := raylib.MeasureText(text, fontSize);
+				raylib.DrawText(text, posX, posY, fontSize, color);
+				
+				return width;
 			}
 		}
 		
