@@ -2,7 +2,8 @@ package dino
 
 import "base:runtime"
 
-import "core:os/os2"
+import os "core:os/os2"
+
 import "core:fmt"
 import "core:slice"
 import "core:strings"
@@ -212,7 +213,7 @@ write_sound_assets_to_disk :: proc() {
 			continue;
 		}
 		
-		write_err := os2.write_entire_file(names[index], decoded);
+		write_err := os.write_entire_file(names[index], decoded);
 		if write_err != nil {
 			raylib.TraceLog(.ERROR, "Failed to write to '%s'\n", strings.clone_to_cstring(names[index]));
 		}
@@ -224,7 +225,7 @@ main :: proc() {
 	sprite_coordinates = SPRITE_1X_COORDINATES;
 	sprite_rects = SPRITE_1X_RECTS;
 	sprite_bytes = SPRITE_1X;
-	for arg in os2.args {
+	for arg in os.args {
 		if arg == "-2x" {
 			window_w, window_h = 2*DEFAULT_WINDOW_W, 2*DEFAULT_WINDOW_H;
 			sprite_coordinates = SPRITE_2X_COORDINATES;
