@@ -573,8 +573,6 @@ main :: proc() {
 						delta := (speed * TARGET_FPS * dt);
 						o.on_screen_position.x -= delta;
 						
-						// 6 * 60 / 1000 * (1 / 60)
-						
 						is_visible_or_to_the_right := o.on_screen_position.x + o.width > 0;
 						if !is_visible_or_to_the_right {
 							small_array.push_back(&passed_obstacles, i);
@@ -610,17 +608,21 @@ main :: proc() {
 				append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										buffer: ^small_array.Small_Array($B, Obstacle),
 										current_speed: f32, horizon_w: f32) {
+					ALLOW_PTERODACTYLS :: true;
+					
 					tag: Obstacle_Tag = ---;
 					for it := 0;; it += 1 {
 						tag = rand.choice_enum(Obstacle_Tag);
 						templates := OBSTACLE_TEMPLATES;
 						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
 							current_speed >= templates[tag].min_speed {
-							if tag != .Pterodactyl { // TODO(ema): Temporary
-								break;
+							when !ALLOW_PTERODACTYLS {
+								if tag == .Pterodactyl do continue;
 							}
+							
+							break;
 						}
-						if it == 10 {
+						if it == 100 {
 							tag = .Cactus_Small;
 							break;
 						}
@@ -635,8 +637,6 @@ main :: proc() {
 						force_push_back(buffer, obstacle);
 					}
 					force_push_front(history, tag);
-					
-					// fmt.println(small_array.slice(history));
 					
 					force_push_back :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
 						if a != nil && N > 0 {
