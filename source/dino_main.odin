@@ -752,21 +752,24 @@ main :: proc() {
 			
 			if .Hitboxes in debug_draw_flags {
 				for r in trex_collision_boxes {
-					raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
+					shifted := shift_rect(r, {trex_world_x, trex_world_y});
+					raylib.DrawRectangleLinesEx(shifted, 1, raylib.RED);
 				}
-				templates := OBSTACLE_TEMPLATES;
-				for t, ti in templates {
-					for b, bi in t.collision_boxes {
-						r := b;
-						r.x += 100 * f32(ti + 1);
-						raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
+				
+				for &o in small_array.slice(&obstacle_buffer) {
+					for b in small_array.slice(&o.collision_boxes) {
+						shifted := shift_rect(b, o.on_screen_position);
+						raylib.DrawRectangleLinesEx(shifted, 1, raylib.RED);
 					}
 				}
-				raylib.DrawLineV({0, trex_world_y}, {f32(window_w), trex_world_y}, raylib.GREEN);
-				raylib.DrawLineV({0, trex_ground_y_normal}, {f32(window_w), trex_ground_y_normal}, raylib.RED);
-				raylib.DrawLineV({0, trex_min_jump_height}, {f32(window_w), trex_min_jump_height}, raylib.BLUE);
-				raylib.DrawText("trex current y", 10, i32(trex_world_y + 5), 20, raylib.GREEN);
-				raylib.DrawText("trex ground y", window_w / 2, i32(trex_ground_y_normal + 5), 20, raylib.RED);
+				
+				when false {
+					raylib.DrawLineV({0, trex_world_y}, {f32(window_w), trex_world_y}, raylib.GREEN);
+					raylib.DrawLineV({0, trex_ground_y_normal}, {f32(window_w), trex_ground_y_normal}, raylib.RED);
+					raylib.DrawLineV({0, trex_min_jump_height}, {f32(window_w), trex_min_jump_height}, raylib.BLUE);
+					raylib.DrawText("trex current y", 10, i32(trex_world_y + 5), 20, raylib.GREEN);
+					raylib.DrawText("trex ground y", window_w / 2, i32(trex_ground_y_normal + 5), 20, raylib.RED);
+				}
 			}
 			
 			if .Variables in debug_draw_flags {
