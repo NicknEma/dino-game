@@ -176,9 +176,9 @@ Obstacle_Template :: struct {
 	min_gap: f32,
 	min_speed: f32,
 	collision_boxes: []raylib.Rectangle,
-	// num_frames,
-	// frame_rate,
 	speed_offset: f32,
+	anim_frames_per_second: f32,
+	num_frames: i32, // TODO(ema): rename to anim frames
 }
 
 OBSTACLE_TEMPLATES :: [len(Obstacle_Tag)]Obstacle_Template {
@@ -189,7 +189,8 @@ OBSTACLE_TEMPLATES :: [len(Obstacle_Tag)]Obstacle_Template {
 		multiple_speed = 4,
 		min_gap = 120,
 		min_speed = 0,
-		collision_boxes = { {0,7,5,27}, {4,0,6,34}, {10,4,7,14} }
+		collision_boxes = { {0,7,5,27}, {4,0,6,34}, {10,4,7,14} },
+		num_frames = 1,
 	},
 	
 	Obstacle_Tag.Cactus_Large = {
@@ -199,7 +200,8 @@ OBSTACLE_TEMPLATES :: [len(Obstacle_Tag)]Obstacle_Template {
 		multiple_speed = 7,
 		min_gap = 120,
 		min_speed = 0,
-		collision_boxes = { {0,12,7,38}, {8,0,7,49}, {13,10,10,38} }
+		collision_boxes = { {0,12,7,38}, {8,0,7,49}, {13,10,10,38} },
+		num_frames = 1,
 	},
 	
 	Obstacle_Tag.Pterodactyl = {
@@ -211,6 +213,8 @@ OBSTACLE_TEMPLATES :: [len(Obstacle_Tag)]Obstacle_Template {
 		min_speed = 8.5,
 		collision_boxes = { {15,15,16,5}, {18,21,24,6}, {2,14,4,3}, {6,10,4,7}, {10,8,6,9} },
 		speed_offset = 0.8,
+		anim_frames_per_second = 1.0 / 6.0,
+		num_frames = 2,
 	}
 }
 
@@ -336,13 +340,18 @@ main :: proc() {
 	// Obstacles
 	
 	Obstacle :: struct {
+		tag: Obstacle_Tag,
 		collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
-		sprite_rec: raylib.Rectangle,
+		sprite_rec: raylib.Rectangle, // TODO(ema): Not needed, can be looked up in the template using the tag
 		on_screen_position: [2]f32,
 		speed_offset: f32,
-		width: f32,
+		width: f32, // TODO(ema): Not needed, can be obtained by multiplying the length with the default width found in the template
 		gap: f32, // TODO(ema): Do I have a better name for this?
 		length: i32,
+		seconds_since_anim_frame_changed: f32,
+		anim_frames_per_second: f32,
+		current_frame: i32,
+		num_frames: i32, // TODO(ema): Not needed, in the template
 		
 		using debug: Obstacle_Debug,
 	}
@@ -350,7 +359,6 @@ main :: proc() {
 	when ODIN_DEBUG {
 		Obstacle_Debug :: struct {
 			color: raylib.Color,
-			tag: Obstacle_Tag,
 		}
 	} else {
 		Obstacle_Debug :: struct {}
@@ -583,6 +591,14 @@ main :: proc() {
 						delta := (speed * TARGET_FPS * dt);
 						o.on_screen_position.x -= delta;
 						
+						o.seconds_since_anim_frame_changed += dt;
+						if o.seconds_since_anim_frame_changed > o.anim_frames_per_second {
+							o.current_frame += 1;
+							if o.current_frame == o.num_frames do o.current_frame = 0;
+							
+							o.seconds_since_anim_frame_changed = 0;
+						}
+						
 						is_visible_or_to_the_right := o.on_screen_position.x + o.width > 0;
 						if !is_visible_or_to_the_right {
 							small_array.push_back(&passed_obstacles, i);
@@ -619,9 +635,9 @@ main :: proc() {
 										buffer: ^small_array.Small_Array($B, Obstacle),
 										current_speed: f32, horizon_w: f32) {
 					TAG_WEIGHTS :: [len(Obstacle_Tag)]int {
-						Obstacle_Tag.Cactus_Small = 4,
-						Obstacle_Tag.Cactus_Large = 4,
-						Obstacle_Tag.Pterodactyl  = 1
+						Obstacle_Tag.Cactus_Small = 1,
+						Obstacle_Tag.Cactus_Large = 1,
+						Obstacle_Tag.Pterodactyl  = 10
 					};
 					
 					weighted_choice_enum :: proc($T: typeid, weights: [$N]int, gen := context.random_generator) -> T where intrinsics.type_is_enum(T), N == len(T) {
@@ -751,18 +767,22 @@ main :: proc() {
 						}
 						
 						case .Pterodactyl: {
-							// unimplemented();
+							obstacle.sprite_rec.x = SPRITE_1X_COORDINATES.pterodactyl.x;
+							obstacle.sprite_rec.y = SPRITE_1X_COORDINATES.pterodactyl.y;
+							obstacle.sprite_rec.width = PTERODACTYL_SPRITE_WIDTH;
+							obstacle.sprite_rec.height = PTERODACTYL_SPRITE_HEIGHT;
 						}
 					}
 					
-					obstacle.sprite_rec.x += f32(length) * obstacle.sprite_rec.width;
-					obstacle.sprite_rec.width *= f32(length);
-					
+					obstacle.tag = tag;
 					obstacle.speed_offset = template.speed_offset;
 					obstacle.gap = gap;
 					obstacle.width = width;
 					obstacle.on_screen_position = {x_pos, y_pos};
 					obstacle.length = length;
+					obstacle.num_frames = template.num_frames;
+					obstacle.current_frame = 0;
+					obstacle.anim_frames_per_second = template.anim_frames_per_second;
 					
 					when ODIN_DEBUG {
 						debug_colors := []raylib.Color {
@@ -770,7 +790,6 @@ main :: proc() {
 						};
 						@(static) debug_color_index := 0;
 						
-						obstacle.tag = tag;
 						obstacle.color = debug_colors[debug_color_index];
 						debug_color_index = (debug_color_index + 1) % len(debug_colors);
 					}
@@ -842,7 +861,9 @@ main :: proc() {
 				//  1 -> 0.5 * 0 * 1 * width -> 0 * width
 				//  2 -> 0.5 * 1 * 2 * width -> 1 * width
 				//  3 -> 0.5 * 2 * 3 * width -> 3 * width
+				// Then adjust the rect to point to the correct animation frame
 				rec.x += 0.5 * f32(o.length - 1) * f32(o.length) * rec.width;
+				rec.x += f32(o.current_frame) * rec.width;
 				rec.width *= f32(o.length);
 				
 				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
