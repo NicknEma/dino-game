@@ -302,6 +302,7 @@ main :: proc() {
 	// Obstacles
 	Obstacle :: struct {
 		collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
+		sprite_rec: raylib.Rectangle,
 		on_screen_position: [2]f32,
 		width: f32, // TODO(ema): What's the use of this as a field?
 		gap: f32, // TODO(ema): Do I have a better name for this?
@@ -491,15 +492,19 @@ main :: proc() {
 				// else
 				//  add new obstacle
 				
-				update_obstacles(&obstacle_history, &obstacle_buffer, current_hor_speed);
+				update_obstacles(&obstacle_history, &obstacle_buffer, current_hor_speed, dt);
 				
 				// TODO(ema): Pass horizon width in and remove hardcoded values
 				// TODO(ema): Draw obstacles
 				// TODO(ema): Why not automatically evict obstacles as well? Why do separate checks?
 				update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										 buffer: ^small_array.Small_Array($B, Obstacle),
-										 current_speed: f32) {
+										 current_speed: f32, dt: f32) {
 					// here remove old ones
+					for &o in small_array.slice(buffer) {
+						delta := (current_speed * dt * 200);
+						o.on_screen_position.x -= delta;
+					}
 					
 					if small_array.len(buffer^) > 0 {
 						last := small_array.get(buffer^, small_array.len(buffer^) - 1);
@@ -517,7 +522,9 @@ main :: proc() {
 					tag: Obstacle_Tag = ---;
 					for it in 0..<10 {
 						tag = rand.choice_enum(Obstacle_Tag);
-						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION {
+						templates := OBSTACLE_TEMPLATES;
+						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
+							current_speed >= templates[tag].min_speed {
 							break;
 						}
 					}
@@ -577,6 +584,26 @@ main :: proc() {
 					min_gap := width * current_speed + template.min_gap * GAP_COEFFICIENT;
 					max_gap := min_gap * MAX_GAP_COEFFICIENT;
 					gap := rand.float32_range(min_gap, max_gap);
+					
+					switch tag {
+						case .Cactus_Small: {
+							obstacle.sprite_rec.x = SPRITE_1X_COORDINATES.cactus_small.x;
+							obstacle.sprite_rec.y = SPRITE_1X_COORDINATES.cactus_small.y;
+							obstacle.sprite_rec.width = CACTUS_SMALL_SPRITE_WIDTH;
+							obstacle.sprite_rec.height = CACTUS_SMALL_SPRITE_HEIGHT;
+						}
+						
+						case .Cactus_Large: {
+							obstacle.sprite_rec.x = SPRITE_1X_COORDINATES.cactus_large.x;
+							obstacle.sprite_rec.y = SPRITE_1X_COORDINATES.cactus_large.y;
+							obstacle.sprite_rec.width = CACTUS_LARGE_SPRITE_WIDTH;
+							obstacle.sprite_rec.height = CACTUS_LARGE_SPRITE_HEIGHT;
+						}
+						
+						case .Pterodactyl: {
+							unimplemented();
+						}
+					}
 					
 					obstacle.gap = gap;
 					obstacle.width = width;
@@ -646,9 +673,14 @@ main :: proc() {
 			}
 		}
 		
-		cactus_small_position: [2]f32 = {300, CACTUS_SMALL_Y};
-		cactus_small_sprite_rect: raylib.Rectangle = {SPRITE_1X_COORDINATES.cactus_small.x, SPRITE_1X_COORDINATES.cactus_small.y, CACTUS_SMALL_SPRITE_WIDTH, CACTUS_SMALL_SPRITE_HEIGHT};
-		raylib.DrawTextureRec(sprite_tex, cactus_small_sprite_rect, cactus_small_position, raylib.WHITE);
+		// Draw obstacles
+		{
+			for o in small_array.slice(&obstacle_buffer) {
+				pos := o.on_screen_position;
+				rec := o.sprite_rec;
+				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
+			}
+		}
 		
 		raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_x, trex_current_y}, raylib.WHITE);
 		
