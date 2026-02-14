@@ -413,11 +413,7 @@ main :: proc() {
 			for f in Debug_Draw_Flag {
 				k := raylib.KeyboardKey(cast(int)f + cast(int)raylib.KeyboardKey.ZERO);
 				if raylib.IsKeyPressed(raylib.KeyboardKey(k)) {
-					if f in debug_draw_flags { // TODO(ema): More idiomatic way to toggle flag?
-						debug_draw_flags -= {f};
-					} else {
-						debug_draw_flags += {f};
-					}
+					debug_draw_flags ~= {f};
 				}
 			}
 			
