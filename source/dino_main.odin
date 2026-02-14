@@ -342,6 +342,7 @@ main :: proc() {
 		speed_offset: f32,
 		width: f32,
 		gap: f32, // TODO(ema): Do I have a better name for this?
+		length: i32,
 		
 		using debug: Obstacle_Debug,
 	}
@@ -761,6 +762,7 @@ main :: proc() {
 					obstacle.gap = gap;
 					obstacle.width = width;
 					obstacle.on_screen_position = {x_pos, y_pos};
+					obstacle.length = length;
 					
 					when ODIN_DEBUG {
 						debug_colors := []raylib.Color {
@@ -831,6 +833,18 @@ main :: proc() {
 			for o in small_array.slice(&obstacle_buffer) {
 				pos := o.on_screen_position;
 				rec := o.sprite_rec;
+				
+				// Here we have to map the length to the offset like this:
+				//  1 -> 0 * width
+				//  2 -> 1 * width
+				//  3 -> 3 * width
+				// We can use the formula: 0.5 * (length - 1) * length * width
+				//  1 -> 0.5 * 0 * 1 * width -> 0 * width
+				//  2 -> 0.5 * 1 * 2 * width -> 1 * width
+				//  3 -> 0.5 * 2 * 3 * width -> 3 * width
+				rec.x += 0.5 * f32(o.length - 1) * f32(o.length) * rec.width;
+				rec.width *= f32(o.length);
+				
 				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
 			}
 		}
