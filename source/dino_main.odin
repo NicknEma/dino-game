@@ -420,6 +420,14 @@ main :: proc() {
 			if raylib.IsKeyPressed(raylib.KeyboardKey.M) {
 				mute_sfx = !mute_sfx;
 			}
+			
+			if raylib.IsKeyPressed(raylib.KeyboardKey.KP_ADD) {
+				trex_run_speed = min(1.1*trex_run_speed, TREX_MAX_SPEED);
+			}
+			
+			if raylib.IsKeyPressed(raylib.KeyboardKey.KP_SUBTRACT) {
+				trex_run_speed = max(0.9*trex_run_speed, TREX_INITIAL_RUN_SPEED);
+			}
 		}
 		
 		trex_sprite_rect: raylib.Rectangle;
@@ -668,7 +676,7 @@ main :: proc() {
 					
 					length: i32 = 1;
 					if current_speed >= template.multiple_speed {
-						length = rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH - 1);
+						length = rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH + 1);
 					}
 					
 					int32_range_clamped :: proc(lo, hi: i32, gen := context.random_generator) -> (val: i32) {
@@ -719,6 +727,9 @@ main :: proc() {
 							// unimplemented();
 						}
 					}
+					
+					obstacle.sprite_rec.x += f32(length) * obstacle.sprite_rec.width;
+					obstacle.sprite_rec.width *= f32(length);
 					
 					obstacle.speed_offset = template.speed_offset;
 					obstacle.gap = gap;
