@@ -332,6 +332,26 @@ main :: proc() {
 	trex_jump_count: int;
 	
 	////////////////////////////////
+	// Obstacles
+	
+	Obstacle :: struct {
+		collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
+		sprite_rec: raylib.Rectangle,
+		on_screen_position: [2]f32,
+		width: f32,
+		gap: f32, // TODO(ema): Do I have a better name for this?
+	}
+	
+	MAX_OBSTACLES :: 5;
+	MAX_COMPOUND_OBSTACLE_LENGTH :: 3;
+	MIN_OBSTACLE_GAP_COEFFICIENT :: 0.6; // TODO(ema): Do I have a better name for these?
+	MAX_OBSTACLE_GAP_COEFFICIENT :: 1.5;
+	MAX_OBSTACLE_DUPLICATION :: 2;
+	OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
+	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
+	obstacle_buffer: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
+	
+	////////////////////////////////
 	// Ground
 	
 	// Coordinates on screen of where each sprite starts
@@ -348,24 +368,6 @@ main :: proc() {
 	// Attempt info
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
-	
-	GAP_COEFFICIENT :: 0.6;
-	
-	// Obstacles
-	Obstacle :: struct {
-		collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
-		sprite_rec: raylib.Rectangle,
-		on_screen_position: [2]f32,
-		width: f32, // TODO(ema): What's the use of this as a field?
-		gap: f32, // TODO(ema): Do I have a better name for this?
-	}
-	MAX_OBSTACLES :: 5;
-	MAX_OBSTACLE_LENGTH :: 3;
-	MAX_GAP_COEFFICIENT :: 1.5;
-	MAX_OBSTACLE_DUPLICATION :: 2;
-	OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
-	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
-	obstacle_buffer: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
 	
 	// Session info
 	attempt_count := 0;
@@ -543,33 +545,32 @@ main :: proc() {
 				// else
 				//  add new obstacle
 				
-				update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt);
+				update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
 				
 				// TODO(ema): Pass horizon width in and remove hardcoded values
 				// TODO(ema): Draw obstacles
 				// TODO(ema): Why not automatically evict obstacles as well? Why do separate checks?
 				update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										 buffer: ^small_array.Small_Array($B, Obstacle),
-										 current_speed: f32, dt: f32) {
-					// here remove old ones
+										 current_speed: f32, dt: f32, horizon_w: f32) {
 					for &o in small_array.slice(buffer) {
-						delta := (current_speed * dt * 200);
+						delta := (current_speed * dt * 200); // TODO(ema): Remove @Hardcoded val
 						o.on_screen_position.x -= delta;
 					}
 					
 					if small_array.len(buffer^) > 0 {
 						last := small_array.get(buffer^, small_array.len(buffer^) - 1);
-						if last.on_screen_position.x + last.width + last.gap < 600 {
-							append_obstacle(history, buffer, current_speed);
+						if last.on_screen_position.x + last.width + last.gap < horizon_w {
+							append_obstacle(history, buffer, current_speed, horizon_w);
 						}
 					} else {
-						append_obstacle(history, buffer, current_speed);
+						append_obstacle(history, buffer, current_speed, horizon_w);
 					}
 				}
 				
 				append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										buffer: ^small_array.Small_Array($B, Obstacle),
-										current_speed: f32) {
+										current_speed: f32, horizon_w: f32) {
 					tag: Obstacle_Tag = ---;
 					for it in 0..<10 {
 						tag = rand.choice_enum(Obstacle_Tag);
@@ -580,7 +581,7 @@ main :: proc() {
 						}
 					}
 					
-					obstacle := make_obstacle(tag, current_speed);
+					obstacle := make_obstacle(tag, current_speed, horizon_w);
 					if !small_array.push_back(buffer, obstacle) {
 						raylib.TraceLog(.ERROR, "Tried to add an obstacle to the buffer, but it was full");
 					}
@@ -597,7 +598,7 @@ main :: proc() {
 					}
 				}
 				
-				make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32) -> Obstacle {
+				make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32, horizon_w: f32) -> Obstacle {
 					templates := OBSTACLE_TEMPLATES;
 					template  := templates[tag];
 					
@@ -606,7 +607,7 @@ main :: proc() {
 					
 					length: i32 = 1;
 					if current_speed >= template.multiple_speed {
-						length = rand.int32_range(0, MAX_OBSTACLE_LENGTH - 1);
+						length = rand.int32_range(0, MAX_COMPOUND_OBSTACLE_LENGTH - 1);
 					}
 					
 					int32_range_clamped :: proc(lo, hi: i32, gen := context.random_generator) -> (val: i32) {
@@ -619,7 +620,7 @@ main :: proc() {
 					}
 					
 					width := template.width * f32(length);
-					x_pos := f32(600); // TODO(ema): pass in, (horizon width - this.width)
+					x_pos := horizon_w; // TODO(ema): horizon width - this.width ??
 					y_pos := template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
 					#no_bounds_check if length > 1 {
 						#assert(len(obstacle.collision_boxes.data) >= 3);
@@ -632,10 +633,11 @@ main :: proc() {
 					}
 					speed_offset := template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
 					
-					min_gap := width * current_speed + template.min_gap * GAP_COEFFICIENT;
-					max_gap := min_gap * MAX_GAP_COEFFICIENT;
+					min_gap := width * current_speed + template.min_gap * MIN_OBSTACLE_GAP_COEFFICIENT;
+					max_gap := min_gap * MAX_OBSTACLE_GAP_COEFFICIENT;
 					gap := rand.float32_range(min_gap, max_gap);
 					
+					// TODO(ema): For cactuses, randomly pick a sprite for each element of the group
 					switch tag {
 						case .Cactus_Small: {
 							obstacle.sprite_rec.x = SPRITE_1X_COORDINATES.cactus_small.x;
