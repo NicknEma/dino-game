@@ -373,7 +373,14 @@ main :: proc() {
 	mute_sfx := false;
 	
 	when ODIN_DEBUG {
-		debug_draw_hitboxes := false;
+		Debug_Draw_Flag :: enum {
+			Hotkeys,
+			Hitboxes,
+			Variables,
+			Mute_Sfx
+		}
+		
+		debug_draw_flags := bit_set[Debug_Draw_Flag] { .Hotkeys, .Hitboxes, .Mute_Sfx };
 		mute_sfx = true;
 	}
 	
@@ -383,9 +390,17 @@ main :: proc() {
 		dt := raylib.GetFrameTime();
 		
 		when ODIN_DEBUG {
-			if raylib.IsKeyPressed(raylib.KeyboardKey.D) {
-				debug_draw_hitboxes = !debug_draw_hitboxes;
+			for f in Debug_Draw_Flag {
+				k := raylib.KeyboardKey(cast(int)f + cast(int)raylib.KeyboardKey.ZERO);
+				if raylib.IsKeyPressed(raylib.KeyboardKey(k)) {
+					if f in debug_draw_flags { // TODO(ema): More idiomatic way to toggle flag?
+						debug_draw_flags -= {f};
+					} else {
+						debug_draw_flags += {f};
+					}
+				}
 			}
+			
 			if raylib.IsKeyPressed(raylib.KeyboardKey.M) {
 				mute_sfx = !mute_sfx;
 			}
@@ -721,8 +736,25 @@ main :: proc() {
 		raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_world_x, trex_world_y}, raylib.WHITE);
 		
 		when ODIN_DEBUG {
-			text_y := i32(10);
-			if debug_draw_hitboxes {
+			global_debug_text_x := i32(0);
+			if .Hotkeys in debug_draw_flags {
+				max_text_w := i32(0);
+				font_size := i32(10);
+				text_y := i32(10);
+				text_x := i32(10);
+				for f in Debug_Draw_Flag {
+					k := raylib.KeyboardKey(cast(int)f + cast(int)raylib.KeyboardKey.ZERO);
+					s := strings.clone_to_cstring(fmt.tprintf("%v: %v", f, k),
+												  context.temp_allocator);
+					text_w := raylib.MeasureText(s, font_size);
+					raylib.DrawText(s, global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
+					max_text_w = max(max_text_w, text_w);
+					text_y = text_y + font_size + 5;
+				}
+				global_debug_text_x += text_x + max_text_w;
+			}
+			
+			if .Hitboxes in debug_draw_flags {
 				for r in trex_collision_boxes {
 					raylib.DrawRectangleLinesEx(r, 1, raylib.RED);
 				}
@@ -740,25 +772,37 @@ main :: proc() {
 				raylib.DrawText("trex current y", 10, i32(trex_world_y + 5), 20, raylib.GREEN);
 				raylib.DrawText("trex ground y", window_w / 2, i32(trex_ground_y_normal + 5), 20, raylib.RED);
 			}
-			if mute_sfx {
-				raylib.DrawText("Mute on", window_w / 2, 10, 20, raylib.BLACK);
+			
+			if .Variables in debug_draw_flags {
+				name_of :: proc(v: $T, expr := #caller_expression(v)) -> string {
+					return expr;
+				}
+				
+				variables := [?]string {
+					fmt.tprintf("%v: %v", name_of(MS_PER_FRAME), MS_PER_FRAME),
+					fmt.tprintf("%v: %v", name_of(trex_status), trex_status),
+					fmt.tprintf("%v: %v", name_of(trex_distance_ran), trex_distance_ran),
+					fmt.tprintf("%v: %v", name_of(trex_min_jump_height), trex_min_jump_height),
+				};
+				
+				max_text_w := i32(0);
+				font_size := i32(10);
+				text_y := i32(10);
+				text_x := i32(10);
+				for v in variables {
+					s := strings.clone_to_cstring(v, context.temp_allocator);
+					text_w := raylib.MeasureText(s, font_size);
+					raylib.DrawText(s, global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
+					max_text_w = max(max_text_w, text_w);
+					text_y = text_y + font_size + 5;
+				}
+				global_debug_text_x += text_x + max_text_w;
 			}
-			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("ms per frame: %v", MS_PER_FRAME),
-													 context.temp_allocator),
-							10, text_y, 10, raylib.BLACK);
-			text_y += 15;
-			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("trex status: %v", trex_status),
-													 context.temp_allocator),
-							10, text_y, 10, raylib.BLACK);
-			text_y += 15;
-			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("distance ran: %v", trex_distance_ran),
-													 context.temp_allocator),
-							10, text_y, 10, raylib.BLACK);
-			text_y += 15;
-			raylib.DrawText(strings.clone_to_cstring(fmt.tprintf("trex_min_jump_height: %v", trex_min_jump_height),
-													 context.temp_allocator),
-							10, text_y, 10, raylib.BLUE);
-			text_y += 15;
+			
+			if .Mute_Sfx in debug_draw_flags {
+				s := mute_sfx ? cstring("Mute on") : cstring("Mute off");
+				raylib.DrawText(s, global_debug_text_x, 10, 10, raylib.BLACK);
+			}
 		}
 		
 		raylib.EndDrawing();
