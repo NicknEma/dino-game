@@ -389,7 +389,12 @@ main :: proc() {
 	for !raylib.WindowShouldClose() {
 		free_all(context.temp_allocator);
 		
-		dt := raylib.GetFrameTime();
+		FIXED_DT :: ODIN_DEBUG;
+		when FIXED_DT {
+			dt := f32(1.0 / TARGET_FPS);
+		} else {
+			dt := raylib.GetFrameTime();
+		}
 		
 		when ODIN_DEBUG {
 			for f in Debug_Draw_Flag {
@@ -553,14 +558,36 @@ main :: proc() {
 				update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 										 buffer: ^small_array.Small_Array($B, Obstacle),
 										 current_speed: f32, dt: f32, horizon_w: f32) {
-					for &o in small_array.slice(buffer) {
+					passed_obstacles: small_array.Small_Array(B, int);
+					for &o, i in small_array.slice(buffer) {
 						delta := (current_speed * dt * 200); // TODO(ema): Remove @Hardcoded val
 						o.on_screen_position.x -= delta;
+						
+						is_visible_or_to_the_right := o.on_screen_position.x + o.width > 0;
+						if !is_visible_or_to_the_right {
+							small_array.push_back(&passed_obstacles, i);
+						}
+					}
+					
+					unordered_remove_elems(buffer, small_array.slice(&passed_obstacles));
+					
+					unordered_remove_elems :: proc(a: ^$A/small_array.Small_Array($N, $T), indices: []int) {
+						if a != nil && N > 0 {
+							num_removed := 0;
+							for index in indices {
+								shifted_index := index - num_removed;
+								if shifted_index < small_array.len(a^) {
+									small_array.unordered_remove(a, shifted_index);
+									num_removed += 1;
+								}
+							}
+						}
 					}
 					
 					if small_array.len(buffer^) > 0 {
 						last := small_array.get(buffer^, small_array.len(buffer^) - 1);
-						if last.on_screen_position.x + last.width + last.gap < horizon_w {
+						if last.on_screen_position.x + last.width + last.gap < horizon_w &&
+							small_array.len(buffer^) < small_array.cap(buffer^) {
 							append_obstacle(history, buffer, current_speed, horizon_w);
 						}
 					} else {
@@ -582,14 +609,28 @@ main :: proc() {
 					}
 					
 					obstacle := make_obstacle(tag, current_speed, horizon_w);
-					if !small_array.push_back(buffer, obstacle) {
-						raylib.TraceLog(.ERROR, "Tried to add an obstacle to the buffer, but it was full");
+					when false {
+						if !small_array.push_back(buffer, obstacle) {
+							raylib.TraceLog(.ERROR, "Tried to add an obstacle to the buffer, but it was full");
+						}
+					} else {
+						force_push_back(buffer, obstacle);
 					}
 					force_push_front(history, tag);
 					
+					force_push_back :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
+						if a != nil && N > 0 {
+							if small_array.len(a^) == small_array.cap(a^) {
+								evicted = small_array.pop_front(a);
+							}
+							small_array.push_back(a, item);
+						}
+						return evicted;
+					}
+					
 					force_push_front :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
-						if a != nil {
-							if small_array.len(a^) > 0 {
+						if a != nil && N > 0  {
+							if small_array.len(a^) == small_array.cap(a^) {
 								evicted = small_array.pop_back(a);
 							}
 							small_array.push_front(a, item);
@@ -654,7 +695,7 @@ main :: proc() {
 						}
 						
 						case .Pterodactyl: {
-							unimplemented();
+							// unimplemented();
 						}
 					}
 					
