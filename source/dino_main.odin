@@ -168,15 +168,6 @@ MIN_OBSTACLE_GAP_COEFFICIENT :: 0.6;
 MAX_OBSTACLE_GAP_COEFFICIENT :: 1.5;
 OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
 
-CACTUS_SMALL_SPRITE_WIDTH  :: 17
-CACTUS_SMALL_SPRITE_HEIGHT :: 35
-
-CACTUS_LARGE_SPRITE_WIDTH  :: 25
-CACTUS_LARGE_SPRITE_HEIGHT :: 50
-
-PTERODACTYL_SPRITE_WIDTH  :: 46
-PTERODACTYL_SPRITE_HEIGHT :: 40
-
 Obstacle_Tag :: enum { Cactus_Small, Cactus_Large, Pterodactyl }
 Obstacle_Template :: struct {
 	hitboxes: []raylib.Rectangle,
@@ -229,9 +220,9 @@ OBSTACLE_TEMPLATES :: [Obstacle_Tag]Obstacle_Template {
 // NOTE(ema): Each of these rectangle indicates only the *FIRST* image of the category, e.g.
 // the *FIRST* small cactus out of 6.
 OBSTACLE_SPRITE_RECTS :: [Obstacle_Tag]raylib.Rectangle {
-	.Cactus_Small = {0, 0, CACTUS_SMALL_SPRITE_WIDTH, CACTUS_SMALL_SPRITE_HEIGHT},
-	.Cactus_Large = {0, 0, CACTUS_LARGE_SPRITE_WIDTH, CACTUS_LARGE_SPRITE_HEIGHT},
-	.Pterodactyl  = {0, 0, PTERODACTYL_SPRITE_WIDTH,  PTERODACTYL_SPRITE_HEIGHT},
+	.Cactus_Small = {0, 0, 17, 35},
+	.Cactus_Large = {0, 0, 25, 50},
+	.Pterodactyl  = {0, 0, 46,  40},
 }
 
 obstacle_sprite_rects: [Obstacle_Tag]raylib.Rectangle;
