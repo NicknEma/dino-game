@@ -239,10 +239,10 @@ write_sound_assets_to_disk :: proc() {
 }
 
 main :: proc() {
-	double_size := false;
+	double_resolution := false;
 	for arg in os.args {
 		if arg == "-2x" {
-			double_size = true;
+			double_resolution = true;
 		}
 	}
 	
@@ -254,7 +254,7 @@ main :: proc() {
 	trex_h_normal = SPRITE_1X_TREX_HEIGHT_NORMAL;
 	trex_w_duck = SPRITE_1X_TREX_WIDTH_DUCK;
 	trex_h_duck = SPRITE_1X_TREX_HEIGHT_DUCK;
-	if double_size {
+	if double_resolution {
 		window_w, window_h = 2*DEFAULT_WINDOW_W, 2*DEFAULT_WINDOW_H;
 		sprite_coordinates = SPRITE_2X_COORDINATES;
 		for &r in sprite_rects.trex_jumping do r = double_rect(r);
@@ -289,7 +289,7 @@ main :: proc() {
 	
 	BOTTOM_PAD :: 10;
 	bottom_pad := i32(BOTTOM_PAD);
-	if double_size {
+	if double_resolution {
 		bottom_pad *= 2;
 	}
 	
@@ -317,7 +317,7 @@ main :: proc() {
 	
 	trex_world_x := f32(TREX_WORLD_POSITION_X);
 	trex_world_y := trex_ground_y_normal;
-	if double_size {
+	if double_resolution {
 		trex_world_x *= 2;
 	}
 	
