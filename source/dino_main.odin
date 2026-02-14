@@ -309,10 +309,6 @@ main :: proc() {
 		trex_h_normal *= 2;
 		trex_w_duck *= 2;
 		trex_h_duck *= 2;
-		
-		double_rect :: proc(r: raylib.Rectangle) -> raylib.Rectangle {
-			return {r.x * 2, r.y * 2, r.width * 2, r.height * 2};
-		}
 	}
 	
 	raylib.SetTraceLogLevel(.ERROR);
@@ -616,19 +612,6 @@ main :: proc() {
 					
 					ordered_remove_elems(buffer, small_array.slice(&passed_obstacles));
 					
-					ordered_remove_elems :: proc(a: ^$A/small_array.Small_Array($N, $T), indices: []int) {
-						if a != nil && N > 0 {
-							num_removed := 0;
-							for index in indices {
-								shifted_index := index - num_removed;
-								if shifted_index < small_array.len(a^) {
-									small_array.ordered_remove(a, shifted_index);
-									num_removed += 1;
-								}
-							}
-						}
-					}
-					
 					if small_array.len(buffer^) > 0 {
 						last := small_array.get(buffer^, small_array.len(buffer^) - 1);
 						if last.world_position.x + get_obstacle_width(last) + last.gap < horizon_w &&
@@ -649,30 +632,6 @@ main :: proc() {
 						Obstacle_Tag.Pterodactyl  = 10
 					};
 					
-					weighted_choice_enum :: proc($T: typeid, weights: [$N]int, gen := context.random_generator) -> T where intrinsics.type_is_enum(T), N == len(T) {
-						total := 0;
-						for weight in weights do total += weight;
-						
-						n := rand.int_max(total, gen);
-						
-						result: T;
-						weight_index := 0;
-						for field in T {
-							if weight_index >= len(weights) {
-								break;
-							}
-							weight := weights[weight_index];
-							if n < weight {
-								result = field;
-								break;
-							}
-							weight_index += 1;
-							n -= weight;
-						}
-						assert(weight_index < len(weights), "No suitable choice was found");
-						return result;
-					}
-					
 					tag: Obstacle_Tag = ---;
 					for it := 0;; it += 1 {
 						tag_weights := TAG_WEIGHTS;
@@ -689,34 +648,8 @@ main :: proc() {
 					}
 					
 					obstacle := make_obstacle(tag, current_speed, horizon_w);
-					when false {
-						if !small_array.push_back(buffer, obstacle) {
-							raylib.TraceLog(.ERROR, "Tried to add an obstacle to the buffer, but it was full");
-						}
-					} else {
-						force_push_back(buffer, obstacle);
-					}
+					force_push_back(buffer, obstacle); // TODO(ema): Should not be necessary as we only push when there is space
 					force_push_front(history, tag);
-					
-					force_push_back :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
-						if a != nil && N > 0 {
-							if small_array.len(a^) == small_array.cap(a^) {
-								evicted = small_array.pop_front(a);
-							}
-							small_array.push_back(a, item);
-						}
-						return evicted;
-					}
-					
-					force_push_front :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
-						if a != nil && N > 0  {
-							if small_array.len(a^) == small_array.cap(a^) {
-								evicted = small_array.pop_back(a);
-							}
-							small_array.push_front(a, item);
-						}
-						return evicted;
-					}
 				}
 				
 				make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32, horizon_w: f32) -> Obstacle {
@@ -743,15 +676,6 @@ main :: proc() {
 					}
 					
 					obstacle.world_position.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
-					
-					int32_range_clamped :: proc(lo, hi: i32, gen := context.random_generator) -> (val: i32) {
-						if lo < hi {
-							val = rand.int32_range(lo, hi, gen);
-						} else {
-							val = min(lo, hi);
-						}
-						return val;
-					}
 					
 					#no_bounds_check if obstacle.length > 1 {
 						#assert(len(obstacle.hitboxes.data) >= 3);
@@ -1020,13 +944,106 @@ main :: proc() {
 	}
 }
 
-shift_rect :: proc(r: raylib.Rectangle, amount: [2]f32) -> raylib.Rectangle {
-	return {r.x + amount.x, r.y + amount.y, r.width, r.height};
-}
+////////////////////////////////
+// Game-specific utils
 
 get_obstacle_width :: proc(o: Obstacle) -> f32 {
 	templates := OBSTACLE_TEMPLATES;
 	template  := templates[o.tag];
 	
 	return template.width * o.length;
+}
+
+////////////////////////////////
+// Generic utils
+
+// TODO(ema): These 3 small_array procedures can probabily be made faster by
+// using the struct fields directly instead of relying on the provided
+// procedures.
+// TODO(ema): They are also overly-generic for what their purpose is, so
+// more specialized versions can be made and would probabily be better.
+
+ordered_remove_elems :: proc(a: ^$A/small_array.Small_Array($N, $T), indices: []int) {
+	if a != nil && N > 0 {
+		num_removed := 0;
+		for index in indices {
+			shifted_index := index - num_removed;
+			if shifted_index < small_array.len(a^) {
+				small_array.ordered_remove(a, shifted_index);
+				num_removed += 1;
+			}
+		}
+	}
+}
+
+force_push_back :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
+	if a != nil && N > 0 {
+		if small_array.len(a^) == small_array.cap(a^) {
+			evicted = small_array.pop_front(a);
+		}
+		small_array.push_back(a, item);
+	}
+	return evicted;
+}
+
+force_push_front :: proc(a: ^$A/small_array.Small_Array($N, $T), item: T) -> (evicted: T) {
+	if a != nil && N > 0  {
+		if small_array.len(a^) == small_array.cap(a^) {
+			evicted = small_array.pop_back(a);
+		}
+		small_array.push_front(a, item);
+	}
+	return evicted;
+}
+
+// TODO(ema): This should *in theory* return a random value weighted using the passed array,
+// but it doesn't look like the result is fair with respect to its inputs. Figure out
+// if we can distribute the results better.
+
+@(require_results)
+weighted_choice_enum :: proc($T: typeid, weights: [$N]int, gen := context.random_generator) -> T where intrinsics.type_is_enum(T), N == len(T) {
+	total := 0;
+	for weight in weights do total += weight;
+	
+	n := rand.int_max(total, gen);
+	
+	result: T;
+	weight_index := 0;
+	for field in T {
+		if weight_index >= len(weights) {
+			break;
+		}
+		weight := weights[weight_index];
+		if n < weight {
+			result = field;
+			break;
+		}
+		weight_index += 1;
+		n -= weight;
+	}
+	assert(weight_index < len(weights), "No suitable choice was found");
+	return result;
+}
+
+// Returns a random `i32` in the range `[lo, hi)`. If `lo >= hi`, returns the lowest of the two.
+@(require_results)
+int32_range_clamped :: proc(lo, hi: i32, gen := context.random_generator) -> (val: i32) {
+	if lo < hi {
+		val = rand.int32_range(lo, hi, gen);
+	} else {
+		val = min(lo, hi);
+	}
+	return val;
+}
+
+// Returns a new rect with the `x` and `y` fields incremented by `amount`.
+@(require_results)
+shift_rect :: proc(r: raylib.Rectangle, amount: [2]f32) -> raylib.Rectangle {
+	return {r.x + amount.x, r.y + amount.y, r.width, r.height};
+}
+
+// Returns a new rect with every field multiplied by `2`.
+@(require_results)
+double_rect :: proc(r: raylib.Rectangle) -> raylib.Rectangle {
+	return {r.x * 2, r.y * 2, r.width * 2, r.height * 2};
 }
