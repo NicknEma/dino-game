@@ -151,71 +151,117 @@ SPRITE_1X_GROUND_NUM_SECTIONS :: 2 // Arbitrary number
 SPRITE_1X_GROUND_SEC_W :: SPRITE_1X_GROUND_W / SPRITE_1X_GROUND_NUM_SECTIONS
 #assert(SPRITE_1X_GROUND_SEC_W * SPRITE_1X_GROUND_NUM_SECTIONS == SPRITE_1X_GROUND_W)
 
-CACTUS_SMALL_SPRITE_WIDTH  :: 17
-CACTUS_SMALL_SPRITE_HEIGHT :: 35
-CACTUS_SMALL_Y :: 105
-
-CACTUS_LARGE_SPRITE_WIDTH  :: 25
-CACTUS_LARGE_SPRITE_HEIGHT :: 50
-CACTUS_LARGE_Y :: 90
-
-PTERODACTYL_SPRITE_WIDTH  :: 46
-PTERODACTYL_SPRITE_HEIGHT :: 40
-PTERODACTYL_Y :: []int { 100, 75, 50 }
-
 sprite_coordinates: Sprite_Coordinates;
 sprite_rects: Sprite_Rects;
 sprite_bytes: []u8;
 
+////////////////////////////////
+// Obstacle constants & types
+
+// NOTE(ema): "Gap" means the amount of empty space following each obstacle before a new
+// obstacle can be placed.
+
+MAX_OBSTACLES                :: 5;
+MAX_OBSTACLE_DUPLICATION     :: 2;
+MAX_COMPOUND_OBSTACLE_LENGTH :: 3;
+MIN_OBSTACLE_GAP_COEFFICIENT :: 0.6;
+MAX_OBSTACLE_GAP_COEFFICIENT :: 1.5;
+OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
+
+CACTUS_SMALL_SPRITE_WIDTH  :: 17
+CACTUS_SMALL_SPRITE_HEIGHT :: 35
+
+CACTUS_LARGE_SPRITE_WIDTH  :: 25
+CACTUS_LARGE_SPRITE_HEIGHT :: 50
+
+PTERODACTYL_SPRITE_WIDTH  :: 46
+PTERODACTYL_SPRITE_HEIGHT :: 40
+
 Obstacle_Tag :: enum { Cactus_Small, Cactus_Large, Pterodactyl }
 Obstacle_Template :: struct {
-	width: f32,
-	height: f32,
+	hitboxes: []raylib.Rectangle,
 	possible_y_positions: []f32,
-	multiple_speed: f32, // minimum required speed for this obstacle to appear in groups TODO(ema): Better name
+	width, height: f32,
 	min_gap: f32,
-	min_speed: f32,
-	collision_boxes: []raylib.Rectangle,
-	speed_offset: f32,
-	anim_frames_per_second: f32,
-	num_frames: i32, // TODO(ema): rename to anim frames
+	min_trex_run_speed_for_single_spawn: f32,
+	min_trex_run_speed_for_multiple_spawn: f32,
+	speed_offset: f32, // The speed of the obstacle itself, to be added to the trex run speed
+	
+	anim_frames_per_second: f32, // Animation framerate
+	num_anim_frames: i32,
 }
 
-OBSTACLE_TEMPLATES :: [len(Obstacle_Tag)]Obstacle_Template {
-	Obstacle_Tag.Cactus_Small = {
-		width = 17,
-		height = 35,
-		possible_y_positions = {105},
-		multiple_speed = 4,
-		min_gap = 120,
-		min_speed = 0,
-		collision_boxes = { {0,7,5,27}, {4,0,6,34}, {10,4,7,14} },
-		num_frames = 1,
+OBSTACLE_TEMPLATES :: [Obstacle_Tag]Obstacle_Template {
+	.Cactus_Small = {
+		hitboxes = { {0,7,5,27}, {4,0,6,34}, {10,4,7,14} },
+		possible_y_positions = {105.0},
+		width = 17.0, height = 35.0,
+		min_gap = 120.0,
+		min_trex_run_speed_for_single_spawn = 0.0,
+		min_trex_run_speed_for_multiple_spawn = 4.0,
+		num_anim_frames = 1,
 	},
 	
-	Obstacle_Tag.Cactus_Large = {
-		width = 25,
-		height = 50,
-		possible_y_positions = {90},
-		multiple_speed = 7,
-		min_gap = 120,
-		min_speed = 0,
-		collision_boxes = { {0,12,7,38}, {8,0,7,49}, {13,10,10,38} },
-		num_frames = 1,
+	.Cactus_Large = {
+		hitboxes = { {0,12,7,38}, {8,0,7,49}, {13,10,10,38} },
+		possible_y_positions = {90.0},
+		width = 25.0, height = 50.0,
+		min_gap = 120.0,
+		min_trex_run_speed_for_single_spawn = 0.0,
+		min_trex_run_speed_for_multiple_spawn = 7.0,
+		num_anim_frames = 1,
 	},
 	
-	Obstacle_Tag.Pterodactyl = {
-		width = 46,
-		height = 40,
-		possible_y_positions = {100, 75, 50},
-		multiple_speed = 999, // TODO(ema): Review this
-		min_gap = 150,
-		min_speed = 8.5,
-		collision_boxes = { {15,15,16,5}, {18,21,24,6}, {2,14,4,3}, {6,10,4,7}, {10,8,6,9} },
+	.Pterodactyl = {
+		hitboxes = { {15,15,16,5}, {18,21,24,6}, {2,14,4,3}, {6,10,4,7}, {10,8,6,9} },
+		possible_y_positions = {100.0, 75.0, 50.0},
+		width = 46.0, height = 40.0,
+		min_gap = 150.0,
+		min_trex_run_speed_for_single_spawn = 8.5,
+		min_trex_run_speed_for_multiple_spawn = 999.0, // TODO(ema): Make this TREX_MAX_SPEED + 1? It's probabily clearer if it stays 999
 		speed_offset = 0.8,
+		
 		anim_frames_per_second = 1.0 / 6.0,
-		num_frames = 2,
+		num_anim_frames = 2,
 	}
+}
+
+// NOTE(ema): Each of these rectangle indicates only the *FIRST* image of the category, e.g.
+// the *FIRST* small cactus out of 6.
+OBSTACLE_SPRITE_RECTS :: [Obstacle_Tag]raylib.Rectangle {
+	.Cactus_Small = {0, 0, CACTUS_SMALL_SPRITE_WIDTH, CACTUS_SMALL_SPRITE_HEIGHT},
+	.Cactus_Large = {0, 0, CACTUS_LARGE_SPRITE_WIDTH, CACTUS_LARGE_SPRITE_HEIGHT},
+	.Pterodactyl  = {0, 0, PTERODACTYL_SPRITE_WIDTH,  PTERODACTYL_SPRITE_HEIGHT},
+}
+
+obstacle_sprite_rects: [Obstacle_Tag]raylib.Rectangle;
+
+Obstacle :: struct {
+	tag: Obstacle_Tag,
+	
+	hitboxes: small_array.Small_Array(5, raylib.Rectangle),
+	world_position: [2]f32,
+	speed_offset: f32,
+	length: f32, // NOTE(ema): Stored as a f32 for convenience, but it's really an integer
+	gap: f32,
+	
+	seconds_since_anim_frame_changed: f32,
+	anim_frames_per_second: f32,
+	current_anim_frame: i32,
+	
+	// width: f32, // TODO(ema): Not needed, can be obtained by multiplying the length with the default width found in the template
+	// num_frames: i32, // TODO(ema): Not needed, in the template
+	// sprite_rec: raylib.Rectangle, // TODO(ema): Not needed, can be looked up in the template using the tag
+	
+	using debug: Obstacle_Debug,
+}
+
+when ODIN_DEBUG {
+	Obstacle_Debug :: struct {
+		color: raylib.Color,
+	}
+} else {
+	Obstacle_Debug :: struct {}
 }
 
 @(disabled=!ODIN_DEBUG)
@@ -337,39 +383,8 @@ main :: proc() {
 	trex_jump_count: int;
 	
 	////////////////////////////////
-	// Obstacles
+	// Obstacle variables
 	
-	Obstacle :: struct {
-		tag: Obstacle_Tag,
-		collision_boxes: small_array.Small_Array(5, raylib.Rectangle),
-		sprite_rec: raylib.Rectangle, // TODO(ema): Not needed, can be looked up in the template using the tag
-		on_screen_position: [2]f32,
-		speed_offset: f32,
-		width: f32, // TODO(ema): Not needed, can be obtained by multiplying the length with the default width found in the template
-		gap: f32, // TODO(ema): Do I have a better name for this?
-		length: i32,
-		seconds_since_anim_frame_changed: f32,
-		anim_frames_per_second: f32,
-		current_frame: i32,
-		num_frames: i32, // TODO(ema): Not needed, in the template
-		
-		using debug: Obstacle_Debug,
-	}
-	
-	when ODIN_DEBUG {
-		Obstacle_Debug :: struct {
-			color: raylib.Color,
-		}
-	} else {
-		Obstacle_Debug :: struct {}
-	}
-	
-	MAX_OBSTACLES :: 5;
-	MAX_COMPOUND_OBSTACLE_LENGTH :: 3;
-	MIN_OBSTACLE_GAP_COEFFICIENT :: 0.6; // TODO(ema): Do I have a better name for these?
-	MAX_OBSTACLE_GAP_COEFFICIENT :: 1.5;
-	MAX_OBSTACLE_DUPLICATION :: 2;
-	OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
 	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
 	obstacle_buffer: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
 	
@@ -587,19 +602,22 @@ main :: proc() {
 										 current_speed: f32, dt: f32, horizon_w: f32) {
 					passed_obstacles: small_array.Small_Array(B, int);
 					for &o, i in small_array.slice(buffer) {
+						templates := OBSTACLE_TEMPLATES;
+						template  := templates[o.tag];
+						
 						speed := current_speed + o.speed_offset;
 						delta := (speed * TARGET_FPS * dt);
-						o.on_screen_position.x -= delta;
+						o.world_position.x -= delta;
 						
 						o.seconds_since_anim_frame_changed += dt;
 						if o.seconds_since_anim_frame_changed > o.anim_frames_per_second {
-							o.current_frame += 1;
-							if o.current_frame == o.num_frames do o.current_frame = 0;
+							o.current_anim_frame += 1;
+							if o.current_anim_frame == template.num_anim_frames do o.current_anim_frame = 0;
 							
 							o.seconds_since_anim_frame_changed = 0;
 						}
 						
-						is_visible_or_to_the_right := o.on_screen_position.x + o.width > 0;
+						is_visible_or_to_the_right := o.world_position.x + get_obstacle_width(o) > 0;
 						if !is_visible_or_to_the_right {
 							small_array.push_back(&passed_obstacles, i);
 						}
@@ -622,7 +640,7 @@ main :: proc() {
 					
 					if small_array.len(buffer^) > 0 {
 						last := small_array.get(buffer^, small_array.len(buffer^) - 1);
-						if last.on_screen_position.x + last.width + last.gap < horizon_w &&
+						if last.world_position.x + get_obstacle_width(last) + last.gap < horizon_w &&
 							small_array.len(buffer^) < small_array.cap(buffer^) {
 							append_obstacle(history, buffer, current_speed, horizon_w);
 						}
@@ -670,7 +688,7 @@ main :: proc() {
 						tag = weighted_choice_enum(Obstacle_Tag, tag_weights);
 						templates := OBSTACLE_TEMPLATES;
 						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
-							current_speed >= templates[tag].min_speed {
+							current_speed >= templates[tag].min_trex_run_speed_for_single_spawn {
 							break;
 						}
 						if it == 100 {
@@ -714,13 +732,26 @@ main :: proc() {
 					templates := OBSTACLE_TEMPLATES;
 					template  := templates[tag];
 					
-					obstacle: Obstacle;
-					small_array.push_back_elems(&obstacle.collision_boxes, ..template.collision_boxes);
+					obstacle  := Obstacle { tag = tag };
+					small_array.push_back_elems(&obstacle.hitboxes, ..template.hitboxes);
 					
-					length: i32 = 1;
-					if current_speed >= template.multiple_speed {
-						length = rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH + 1);
+					if current_speed >= template.min_trex_run_speed_for_multiple_spawn {
+						obstacle.length = cast(f32)rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH + 1);
+					} else {
+						obstacle.length = 1;
 					}
+					
+					obstacle_width := get_obstacle_width(obstacle);
+					
+					DO_UGLY_BUT_FAITHFUL_POP_IN :: false;
+					
+					when DO_UGLY_BUT_FAITHFUL_POP_IN {
+						obstacle.world_position.x = horizon_w - obstacle_width;
+					} else {
+						obstacle.world_position.x = horizon_w;
+					}
+					
+					obstacle.world_position.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
 					
 					int32_range_clamped :: proc(lo, hi: i32, gen := context.random_generator) -> (val: i32) {
 						if lo < hi {
@@ -731,58 +762,27 @@ main :: proc() {
 						return val;
 					}
 					
-					width := template.width * f32(length);
-					assert(width != 0);
-					x_pos := horizon_w; // TODO(ema): horizon width - this.width ??
-					y_pos := template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
-					#no_bounds_check if length > 1 {
-						#assert(len(obstacle.collision_boxes.data) >= 3);
-						b := small_array.slice(&obstacle.collision_boxes);
+					#no_bounds_check if obstacle.length > 1 {
+						#assert(len(obstacle.hitboxes.data) >= 3);
+						b := small_array.slice(&obstacle.hitboxes);
 						
-						// When the obstacle is a compound obstacle, make adjustments to the
-						// collision boxes so that they cover the entire width
-						b[1].width = width - b[0].width - b[2].width;
-						b[2].x = width - b[2].width;
-					}
-					speed_offset := template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
-					
-					min_gap := width * current_speed + template.min_gap * MIN_OBSTACLE_GAP_COEFFICIENT;
-					max_gap := min_gap * MAX_OBSTACLE_GAP_COEFFICIENT;
-					gap := rand.float32_range(min_gap, max_gap);
-					
-					// TODO(ema): For cactuses, randomly pick a sprite for each element of the group
-					switch tag {
-						case .Cactus_Small: {
-							obstacle.sprite_rec.x = SPRITE_1X_COORDINATES.cactus_small.x;
-							obstacle.sprite_rec.y = SPRITE_1X_COORDINATES.cactus_small.y;
-							obstacle.sprite_rec.width = CACTUS_SMALL_SPRITE_WIDTH;
-							obstacle.sprite_rec.height = CACTUS_SMALL_SPRITE_HEIGHT;
-						}
-						
-						case .Cactus_Large: {
-							obstacle.sprite_rec.x = SPRITE_1X_COORDINATES.cactus_large.x;
-							obstacle.sprite_rec.y = SPRITE_1X_COORDINATES.cactus_large.y;
-							obstacle.sprite_rec.width = CACTUS_LARGE_SPRITE_WIDTH;
-							obstacle.sprite_rec.height = CACTUS_LARGE_SPRITE_HEIGHT;
-						}
-						
-						case .Pterodactyl: {
-							obstacle.sprite_rec.x = SPRITE_1X_COORDINATES.pterodactyl.x;
-							obstacle.sprite_rec.y = SPRITE_1X_COORDINATES.pterodactyl.y;
-							obstacle.sprite_rec.width = PTERODACTYL_SPRITE_WIDTH;
-							obstacle.sprite_rec.height = PTERODACTYL_SPRITE_HEIGHT;
-						}
+						// NOTE(ema): When the obstacle is a compound obstacle, make adjustments to the
+						// collision boxes so that they cover the entire width.
+						b[1].width = obstacle_width - b[0].width - b[2].width; // Make the middle one wider
+						b[2].x = obstacle_width - b[2].width;                  // Shift the last one to the right
 					}
 					
-					obstacle.tag = tag;
-					obstacle.speed_offset = template.speed_offset;
-					obstacle.gap = gap;
-					obstacle.width = width;
-					obstacle.on_screen_position = {x_pos, y_pos};
-					obstacle.length = length;
-					obstacle.num_frames = template.num_frames;
-					obstacle.current_frame = 0;
+					obstacle.speed_offset = template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
+					
+					{
+						min_gap := obstacle_width * current_speed + template.min_gap * MIN_OBSTACLE_GAP_COEFFICIENT;
+						max_gap := min_gap * MAX_OBSTACLE_GAP_COEFFICIENT;
+						obstacle.gap = rand.float32_range(min_gap, max_gap);
+					}
+					
+					obstacle.seconds_since_anim_frame_changed = 0;
 					obstacle.anim_frames_per_second = template.anim_frames_per_second;
+					obstacle.current_anim_frame = 0;
 					
 					when ODIN_DEBUG {
 						debug_colors := []raylib.Color {
@@ -849,9 +849,47 @@ main :: proc() {
 		
 		// Draw obstacles
 		{
+			obstacle_sprite_rects = OBSTACLE_SPRITE_RECTS;
+			if double_resolution {
+				// TODO(ema): Incomplete
+			}
 			for o in small_array.slice(&obstacle_buffer) {
-				pos := o.on_screen_position;
-				rec := o.sprite_rec;
+				pos := o.world_position;
+				// rec := o.sprite_rec;
+				
+				when false {
+					rec: raylib.Rectangle;
+					switch o.tag {
+						case .Cactus_Small: {
+							rec.x = SPRITE_1X_COORDINATES.cactus_small.x;
+							rec.y = SPRITE_1X_COORDINATES.cactus_small.y;
+							rec.width = CACTUS_SMALL_SPRITE_WIDTH;
+							rec.height = CACTUS_SMALL_SPRITE_HEIGHT;
+						}
+						
+						case .Cactus_Large: {
+							rec.x = SPRITE_1X_COORDINATES.cactus_large.x;
+							rec.y = SPRITE_1X_COORDINATES.cactus_large.y;
+							rec.width = CACTUS_LARGE_SPRITE_WIDTH;
+							rec.height = CACTUS_LARGE_SPRITE_HEIGHT;
+						}
+						
+						case .Pterodactyl: {
+							rec.x = SPRITE_1X_COORDINATES.pterodactyl.x;
+							rec.y = SPRITE_1X_COORDINATES.pterodactyl.y;
+							rec.width = PTERODACTYL_SPRITE_WIDTH;
+							rec.height = PTERODACTYL_SPRITE_HEIGHT;
+						}
+					}
+				} else {
+					coords: [2]f32; // TODO(ema): See if we can avoid this switch
+					switch o.tag {
+						case .Cactus_Small: coords = sprite_coordinates.cactus_small;
+						case .Cactus_Large: coords = sprite_coordinates.cactus_large;
+						case .Pterodactyl: coords = sprite_coordinates.pterodactyl;
+					}
+					rec := shift_rect(obstacle_sprite_rects[o.tag], coords);
+				}
 				
 				// Here we have to map the length to the offset like this:
 				//  1 -> 0 * width
@@ -862,9 +900,9 @@ main :: proc() {
 				//  2 -> 0.5 * 1 * 2 * width -> 1 * width
 				//  3 -> 0.5 * 2 * 3 * width -> 3 * width
 				// Then adjust the rect to point to the correct animation frame
-				rec.x += 0.5 * f32(o.length - 1) * f32(o.length) * rec.width;
-				rec.x += f32(o.current_frame) * rec.width;
-				rec.width *= f32(o.length);
+				rec.x += 0.5 * (o.length - 1) * o.length * rec.width;
+				rec.x += f32(o.current_anim_frame) * rec.width;
+				rec.width *= o.length;
 				
 				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
 			}
@@ -898,14 +936,14 @@ main :: proc() {
 				}
 				
 				for &o in small_array.slice(&obstacle_buffer) {
-					for b in small_array.slice(&o.collision_boxes) {
-						shifted := shift_rect(b, o.on_screen_position);
+					for b in small_array.slice(&o.hitboxes) {
+						shifted := shift_rect(b, o.world_position);
 						raylib.DrawRectangleLinesEx(shifted, 1, o.color);
 					}
 					
-					gap_start := o.on_screen_position.x + o.width;
+					gap_start := o.world_position.x + get_obstacle_width(o);
 					gap_end := gap_start + o.gap;
-					gap_y := o.on_screen_position.y;
+					gap_y := o.world_position.y;
 					raylib.DrawLineV({gap_start, gap_y}, {gap_end, gap_y},
 									 o.color);
 				}
@@ -993,4 +1031,11 @@ main :: proc() {
 
 shift_rect :: proc(r: raylib.Rectangle, amount: [2]f32) -> raylib.Rectangle {
 	return {r.x + amount.x, r.y + amount.y, r.width, r.height};
+}
+
+get_obstacle_width :: proc(o: Obstacle) -> f32 {
+	templates := OBSTACLE_TEMPLATES;
+	template  := templates[o.tag];
+	
+	return template.width * o.length;
 }
