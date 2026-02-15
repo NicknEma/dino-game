@@ -524,6 +524,12 @@ main :: proc() {
 						ms_per_frame := 1.0 / f32(trex_anim_frames_per_ms);
 						z := dt / ms_per_frame;
 						
+						if raylib.IsKeyReleased(raylib.KeyboardKey.UP) {
+							if trex_reached_min_height && trex_jump_velocity < TREX_DROP_VELOCITY {
+								trex_jump_velocity = TREX_DROP_VELOCITY;
+							}
+						}
+						
 						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
 							if !trex_speed_drop {
 								trex_jump_velocity = 1;
