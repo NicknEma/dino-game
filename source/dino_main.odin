@@ -470,6 +470,9 @@ main :: proc() {
 			} else if trex_status == .Crashed {
 				// save high score
 				
+				rect_slice = sprite_rects.trex_crashed[:1];
+				trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Crashed];
+				
 				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) {
 					if !mute_sfx {
 						raylib.PlaySound(sound_press);
@@ -718,8 +721,32 @@ main :: proc() {
 				}
 				
 				// check collisions
-				// TODO(ema): Implement
-				
+				{
+					hit := false;
+					obstacle_loop: for &obstacle in small_array.slice(&obstacle_buffer) {
+						for obstacle_hitbox in small_array.slice(&obstacle.hitboxes) {
+							rectA := shift_rect(obstacle_hitbox, obstacle.world_position);
+							for trex_hitbox in trex_collision_boxes {
+								rectB := shift_rect(trex_hitbox, {trex_world_x, trex_world_y});
+								hit = raylib.CheckCollisionRecs(rectA, rectB);
+								if hit {
+									break obstacle_loop;
+								}
+							}
+						}
+					}
+					
+					if hit {
+						if !mute_sfx {
+							raylib.PlaySound(sound_hit);
+						}
+						
+						trex_status = .Crashed;
+					}
+				}
+			}
+			
+			if trex_status != .Crashed && trex_status != .Waiting {
 				// NOTE(ema): Don't do this before collision checking, because *technically*
 				// you haven't run the distance if you crashed
 				trex_distance_ran += trex_run_speed * dt / MS_PER_FRAME;
