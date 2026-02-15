@@ -438,14 +438,9 @@ main :: proc() {
 			}
 		}
 		
-		trex_sprite_rect: raylib.Rectangle;
+		// Simulate trex
 		{
-			rect_slice: []raylib.Rectangle;
-			trex_anim_frames_per_ms: int;
 			if trex_status == .Waiting {
-				rect_slice = sprite_rects.trex_waiting[:1]; // Temporary :1
-				trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Waiting];
-				
 				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) ||
 					raylib.IsMouseButtonPressed(raylib.MouseButton.LEFT) {
 					trex_status = .Running;
@@ -470,9 +465,6 @@ main :: proc() {
 			} else if trex_status == .Crashed {
 				// save high score
 				
-				rect_slice = sprite_rects.trex_crashed[:1];
-				trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Crashed];
-				
 				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) {
 					if !mute_sfx {
 						raylib.PlaySound(sound_press);
@@ -483,8 +475,6 @@ main :: proc() {
 			} else {
 				// if playing intro, play intro, else:
 				
-				rect_slice = sprite_rects.trex_running[:];
-				trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Running];
 				trex_collision_boxes = trex_collision_boxes_running[:];
 				
 				// TODO(ema): Maybe loop over this switch until prev status == status? so
@@ -509,9 +499,6 @@ main :: proc() {
 					}
 					
 					case .Ducking: {
-						rect_slice = sprite_rects.trex_ducking[:];
-						trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Ducking];
-						
 						trex_world_y = trex_ground_y_duck;
 						trex_collision_boxes = trex_collision_boxes_ducking[:];
 						
@@ -521,11 +508,7 @@ main :: proc() {
 					}
 					
 					case .Jumping: {
-						rect_slice = sprite_rects.trex_jumping[:];
-						trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Jumping];
-						
-						ms_per_frame := 1.0 / f32(trex_anim_frames_per_ms);
-						z := dt / ms_per_frame;
+						z := dt * 1000.0 / MS_PER_FRAME;
 						
 						if raylib.IsKeyReleased(raylib.KeyboardKey.UP) {
 							if trex_reached_min_height && trex_jump_velocity < TREX_DROP_VELOCITY {
@@ -571,207 +554,207 @@ main :: proc() {
 																		 context.temp_allocator));
 					}
 				}
-				
-				// update horizon line (ground)
-				// TODO(ema): Fix this
-				{
-					delta := cast(i32)(trex_run_speed * TARGET_FPS * dt);
-					for _, dst_i in ground_x {
-						dst_x := ground_x[dst_i];
-						dst_x -= delta;
-						if dst_x < -SCREEN_GROUND_SEC_W {
-							dst_x += SCREEN_GROUND_W;
-						}
-						ground_x[dst_i] = dst_x;
+			}
+		}
+		
+		// Simulate rest of the world
+		if trex_status != .Waiting && trex_status != .Crashed {
+			// update horizon line (ground)
+			// TODO(ema): Fix this
+			{
+				delta := cast(i32)(trex_run_speed * TARGET_FPS * dt);
+				for _, dst_i in ground_x {
+					dst_x := ground_x[dst_i];
+					dst_x -= delta;
+					if dst_x < -SCREEN_GROUND_SEC_W {
+						dst_x += SCREEN_GROUND_W;
+					}
+					ground_x[dst_i] = dst_x;
+				}
+			}
+			
+			// update clouds
+			// TODO(ema): Implement
+			
+			// TODO(ema): Inline these functions
+			update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
+			
+			update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
+									 buffer: ^small_array.Small_Array($B, Obstacle),
+									 current_speed: f32, dt: f32, horizon_w: f32) {
+				passed_obstacles: small_array.Small_Array(B, int);
+				for &o, i in small_array.slice(buffer) {
+					templates := OBSTACLE_TEMPLATES;
+					template  := templates[o.tag];
+					
+					speed := current_speed + o.speed_offset;
+					delta := (speed * TARGET_FPS * dt);
+					o.world_position.x -= delta;
+					
+					o.seconds_since_anim_frame_changed += dt;
+					if o.seconds_since_anim_frame_changed > o.anim_frames_per_second {
+						o.current_anim_frame += 1;
+						if o.current_anim_frame == template.num_anim_frames do o.current_anim_frame = 0;
+						
+						o.seconds_since_anim_frame_changed = 0;
+					}
+					
+					is_visible_or_to_the_right := o.world_position.x + get_obstacle_width(o) > 0;
+					if !is_visible_or_to_the_right {
+						small_array.push_back(&passed_obstacles, i);
 					}
 				}
 				
-				// update clouds
-				// TODO(ema): Implement
+				ordered_remove_elems(buffer, small_array.slice(&passed_obstacles));
 				
-				// TODO(ema): Inline these functions
-				update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
-				
-				update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
-										 buffer: ^small_array.Small_Array($B, Obstacle),
-										 current_speed: f32, dt: f32, horizon_w: f32) {
-					passed_obstacles: small_array.Small_Array(B, int);
-					for &o, i in small_array.slice(buffer) {
-						templates := OBSTACLE_TEMPLATES;
-						template  := templates[o.tag];
-						
-						speed := current_speed + o.speed_offset;
-						delta := (speed * TARGET_FPS * dt);
-						o.world_position.x -= delta;
-						
-						o.seconds_since_anim_frame_changed += dt;
-						if o.seconds_since_anim_frame_changed > o.anim_frames_per_second {
-							o.current_anim_frame += 1;
-							if o.current_anim_frame == template.num_anim_frames do o.current_anim_frame = 0;
-							
-							o.seconds_since_anim_frame_changed = 0;
-						}
-						
-						is_visible_or_to_the_right := o.world_position.x + get_obstacle_width(o) > 0;
-						if !is_visible_or_to_the_right {
-							small_array.push_back(&passed_obstacles, i);
-						}
-					}
-					
-					ordered_remove_elems(buffer, small_array.slice(&passed_obstacles));
-					
-					if small_array.len(buffer^) > 0 {
-						last := small_array.get(buffer^, small_array.len(buffer^) - 1);
-						if last.world_position.x + get_obstacle_width(last) + last.gap < horizon_w &&
-							small_array.len(buffer^) < small_array.cap(buffer^) {
-							append_obstacle(history, buffer, current_speed, horizon_w);
-						}
-					} else {
+				if small_array.len(buffer^) > 0 {
+					last := small_array.get(buffer^, small_array.len(buffer^) - 1);
+					if last.world_position.x + get_obstacle_width(last) + last.gap < horizon_w &&
+						small_array.len(buffer^) < small_array.cap(buffer^) {
 						append_obstacle(history, buffer, current_speed, horizon_w);
 					}
+				} else {
+					append_obstacle(history, buffer, current_speed, horizon_w);
 				}
+			}
+			
+			append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
+									buffer: ^small_array.Small_Array($B, Obstacle),
+									current_speed: f32, horizon_w: f32) {
+				TAG_WEIGHTS :: [len(Obstacle_Tag)]int {
+					Obstacle_Tag.Cactus_Small = 1,
+					Obstacle_Tag.Cactus_Large = 1,
+					Obstacle_Tag.Pterodactyl  = 10
+				};
 				
-				append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
-										buffer: ^small_array.Small_Array($B, Obstacle),
-										current_speed: f32, horizon_w: f32) {
-					TAG_WEIGHTS :: [len(Obstacle_Tag)]int {
-						Obstacle_Tag.Cactus_Small = 1,
-						Obstacle_Tag.Cactus_Large = 1,
-						Obstacle_Tag.Pterodactyl  = 10
-					};
-					
-					tag: Obstacle_Tag = ---;
-					for it := 0;; it += 1 {
-						tag_weights := TAG_WEIGHTS;
-						tag = weighted_choice_enum(Obstacle_Tag, tag_weights);
-						templates := OBSTACLE_TEMPLATES;
-						if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
-							current_speed >= templates[tag].min_trex_run_speed_for_single_spawn {
-							break;
-						}
-						if it == 100 {
-							tag = .Cactus_Small;
-							break;
-						}
-					}
-					
-					obstacle := make_obstacle(tag, current_speed, horizon_w);
-					force_push_back(buffer, obstacle); // TODO(ema): Should not be necessary as we only push when there is space
-					force_push_front(history, tag);
-				}
-				
-				make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32, horizon_w: f32) -> Obstacle {
+				tag: Obstacle_Tag = ---;
+				for it := 0;; it += 1 {
+					tag_weights := TAG_WEIGHTS;
+					tag = weighted_choice_enum(Obstacle_Tag, tag_weights);
 					templates := OBSTACLE_TEMPLATES;
-					template  := templates[tag];
-					
-					obstacle  := Obstacle { tag = tag };
-					small_array.push_back_elems(&obstacle.hitboxes, ..template.hitboxes);
-					
-					if current_speed >= template.min_trex_run_speed_for_multiple_spawn {
-						obstacle.length = cast(f32)rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH + 1);
-					} else {
-						obstacle.length = 1;
+					if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
+						current_speed >= templates[tag].min_trex_run_speed_for_single_spawn {
+						break;
 					}
-					
-					obstacle_width := get_obstacle_width(obstacle);
-					
-					DO_UGLY_BUT_FAITHFUL_POP_IN :: false;
-					
-					when DO_UGLY_BUT_FAITHFUL_POP_IN {
-						obstacle.world_position.x = horizon_w - obstacle_width;
-					} else {
-						obstacle.world_position.x = horizon_w;
+					if it == 100 {
+						tag = .Cactus_Small;
+						break;
 					}
-					
-					obstacle.world_position.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
-					
-					#no_bounds_check if obstacle.length > 1 {
-						#assert(len(obstacle.hitboxes.data) >= 3);
-						b := small_array.slice(&obstacle.hitboxes);
-						
-						// NOTE(ema): When the obstacle is a compound obstacle, make adjustments to the
-						// collision boxes so that they cover the entire width.
-						b[1].width = obstacle_width - b[0].width - b[2].width; // Make the middle one wider
-						b[2].x = obstacle_width - b[2].width;                  // Shift the last one to the right
-					}
-					
-					obstacle.speed_offset = template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
-					
-					{
-						min_gap := obstacle_width * current_speed + template.min_gap * MIN_OBSTACLE_GAP_COEFFICIENT;
-						max_gap := min_gap * MAX_OBSTACLE_GAP_COEFFICIENT;
-						obstacle.gap = rand.float32_range(min_gap, max_gap);
-					}
-					
-					obstacle.seconds_since_anim_frame_changed = 0;
-					obstacle.anim_frames_per_second = template.anim_frames_per_second;
-					obstacle.current_anim_frame = 0;
-					
-					when ODIN_DEBUG {
-						debug_colors := []raylib.Color {
-							raylib.RED, raylib.ORANGE, raylib.GREEN, raylib.SKYBLUE, raylib.PURPLE
-						};
-						@(static) debug_color_index := 0;
-						
-						obstacle.color = debug_colors[debug_color_index];
-						debug_color_index = (debug_color_index + 1) % len(debug_colors);
-					}
-					
-					return obstacle;
 				}
 				
-				// check collisions
+				obstacle := make_obstacle(tag, current_speed, horizon_w);
+				force_push_back(buffer, obstacle); // TODO(ema): Should not be necessary as we only push when there is space
+				force_push_front(history, tag);
+			}
+			
+			make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32, horizon_w: f32) -> Obstacle {
+				templates := OBSTACLE_TEMPLATES;
+				template  := templates[tag];
+				
+				obstacle  := Obstacle { tag = tag };
+				small_array.push_back_elems(&obstacle.hitboxes, ..template.hitboxes);
+				
+				if current_speed >= template.min_trex_run_speed_for_multiple_spawn {
+					obstacle.length = cast(f32)rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH + 1);
+				} else {
+					obstacle.length = 1;
+				}
+				
+				obstacle_width := get_obstacle_width(obstacle);
+				
+				DO_UGLY_BUT_FAITHFUL_POP_IN :: false;
+				
+				when DO_UGLY_BUT_FAITHFUL_POP_IN {
+					obstacle.world_position.x = horizon_w - obstacle_width;
+				} else {
+					obstacle.world_position.x = horizon_w;
+				}
+				
+				obstacle.world_position.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
+				
+				#no_bounds_check if obstacle.length > 1 {
+					#assert(len(obstacle.hitboxes.data) >= 3);
+					b := small_array.slice(&obstacle.hitboxes);
+					
+					// NOTE(ema): When the obstacle is a compound obstacle, make adjustments to the
+					// collision boxes so that they cover the entire width.
+					b[1].width = obstacle_width - b[0].width - b[2].width; // Make the middle one wider
+					b[2].x = obstacle_width - b[2].width;                  // Shift the last one to the right
+				}
+				
+				obstacle.speed_offset = template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
+				
 				{
-					hit := false;
-					obstacle_loop: for &obstacle in small_array.slice(&obstacle_buffer) {
-						for obstacle_hitbox in small_array.slice(&obstacle.hitboxes) {
-							rectA := shift_rect(obstacle_hitbox, obstacle.world_position);
-							for trex_hitbox in trex_collision_boxes {
-								rectB := shift_rect(trex_hitbox, {trex_world_x, trex_world_y});
-								hit = raylib.CheckCollisionRecs(rectA, rectB);
-								if hit {
-									break obstacle_loop;
-								}
+					min_gap := obstacle_width * current_speed + template.min_gap * MIN_OBSTACLE_GAP_COEFFICIENT;
+					max_gap := min_gap * MAX_OBSTACLE_GAP_COEFFICIENT;
+					obstacle.gap = rand.float32_range(min_gap, max_gap);
+				}
+				
+				obstacle.seconds_since_anim_frame_changed = 0;
+				obstacle.anim_frames_per_second = template.anim_frames_per_second;
+				obstacle.current_anim_frame = 0;
+				
+				when ODIN_DEBUG {
+					debug_colors := []raylib.Color {
+						raylib.RED, raylib.ORANGE, raylib.GREEN, raylib.SKYBLUE, raylib.PURPLE
+					};
+					@(static) debug_color_index := 0;
+					
+					obstacle.color = debug_colors[debug_color_index];
+					debug_color_index = (debug_color_index + 1) % len(debug_colors);
+				}
+				
+				return obstacle;
+			}
+			
+			// check collisions
+			{
+				hit := false;
+				obstacle_loop: for &obstacle in small_array.slice(&obstacle_buffer) {
+					for obstacle_hitbox in small_array.slice(&obstacle.hitboxes) {
+						rectA := shift_rect(obstacle_hitbox, obstacle.world_position);
+						for trex_hitbox in trex_collision_boxes {
+							rectB := shift_rect(trex_hitbox, {trex_world_x, trex_world_y});
+							hit = raylib.CheckCollisionRecs(rectA, rectB);
+							if hit {
+								break obstacle_loop;
 							}
 						}
 					}
-					
-					if hit {
-						if !mute_sfx {
-							raylib.PlaySound(sound_hit);
-						}
-						
-						trex_status = .Crashed;
+				}
+				
+				if hit {
+					if !mute_sfx {
+						raylib.PlaySound(sound_hit);
 					}
+					
+					trex_status = .Crashed;
 				}
 			}
-			
-			if trex_status != .Crashed && trex_status != .Waiting {
-				// NOTE(ema): Don't do this before collision checking, because *technically*
-				// you haven't run the distance if you crashed
-				trex_distance_ran += trex_run_speed * dt / MS_PER_FRAME;
-				if trex_run_speed < TREX_MAX_SPEED {
-					trex_run_speed += TREX_X_ACCELERATION;
-				}
-				
-				// update high score
-				// play new high score sound
-				
-				// if trex changed status
-				//  animation frame index = 0
-				//  if status == waiting
-				//   waiting anim start time = current time
-				//   blink delay = random() * BLINK_TIMING
-				// if status == waiting
-				//  if time - waiting anim start time >= blink delay
-				//   set blink sprite
-				//   set new blink delay
-				//   waiting anim start time = current time
+		}
+		
+		// Simulate trex run & animate
+		if trex_status != .Crashed && trex_status != .Waiting {
+			// NOTE(ema): Don't do this before collision checking, because *technically*
+			// you haven't run the distance if you crashed
+			trex_distance_ran += trex_run_speed * dt / MS_PER_FRAME;
+			if trex_run_speed < TREX_MAX_SPEED {
+				trex_run_speed += TREX_X_ACCELERATION;
 			}
 			
-			rect_index := (frame_count_since_attempt_start / trex_anim_frames_per_ms) % len(rect_slice);
-			trex_sprite_rect = rect_slice[rect_index];
-			trex_sprite_rect = shift_rect(trex_sprite_rect, sprite_coordinates.trex);
+			// update high score
+			// play new high score sound
+			
+			// if trex changed status
+			//  animation frame index = 0
+			//  if status == waiting
+			//   waiting anim start time = current time
+			//   blink delay = random() * BLINK_TIMING
+			// if status == waiting
+			//  if time - waiting anim start time >= blink delay
+			//   set blink sprite
+			//   set new blink delay
+			//   waiting anim start time = current time
 		}
 		
 		raylib.BeginDrawing();
@@ -856,7 +839,45 @@ main :: proc() {
 			}
 		}
 		
-		raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_world_x, trex_world_y}, raylib.WHITE);
+		// Draw trex
+		{
+			trex_sprite_rect: raylib.Rectangle;
+			rect_slice: []raylib.Rectangle;
+			trex_anim_frames_per_ms: int;
+			
+			switch trex_status {
+				case .Waiting: {
+					rect_slice = sprite_rects.trex_waiting[:1]; // Temporary :1
+					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Waiting];
+				}
+				
+				case .Crashed: {
+					rect_slice = sprite_rects.trex_crashed[:1];
+					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Crashed];
+				}
+				
+				case .Running: {
+					rect_slice = sprite_rects.trex_running[:];
+					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Running];
+				}
+				
+				case .Ducking: {
+					rect_slice = sprite_rects.trex_ducking[:];
+					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Ducking];
+				}
+				
+				case .Jumping: {
+					rect_slice = sprite_rects.trex_jumping[:];
+					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Jumping];
+				}
+			}
+			
+			rect_index := (frame_count_since_attempt_start / trex_anim_frames_per_ms) % len(rect_slice);
+			trex_sprite_rect = rect_slice[rect_index];
+			trex_sprite_rect = shift_rect(trex_sprite_rect, sprite_coordinates.trex);
+			
+			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_world_x, trex_world_y}, raylib.WHITE);
+		}
 		
 		when ODIN_DEBUG {
 			global_debug_text_x := i32(0);
