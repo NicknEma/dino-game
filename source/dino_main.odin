@@ -136,20 +136,28 @@ TEXT_Y :: 13
 TEXT_WIDTH :: 191
 TEXT_HEIGHT :: 11
 
-SCREEN_GROUND_X :: 2
-SCREEN_GROUND_Y :: 127
-SCREEN_GROUND_W :: DEFAULT_WINDOW_W - 2*SCREEN_GROUND_X
-SCREEN_GROUND_H :: 12
-SCREEN_GROUND_NUM_SECTIONS :: 2 // Arbitrary number
-SCREEN_GROUND_SEC_W :: SCREEN_GROUND_W / SCREEN_GROUND_NUM_SECTIONS
-#assert(SCREEN_GROUND_SEC_W * SCREEN_GROUND_NUM_SECTIONS == SCREEN_GROUND_W)
+////////////////////////////////
+// Ground constants & types
+
 SPRITE_1X_GROUND_X :: 2
 SPRITE_1X_GROUND_Y :: 54
 SPRITE_1X_GROUND_W :: 1200
 SPRITE_1X_GROUND_H :: 12
-SPRITE_1X_GROUND_NUM_SECTIONS :: 2 // Arbitrary number
-SPRITE_1X_GROUND_SEC_W :: SPRITE_1X_GROUND_W / SPRITE_1X_GROUND_NUM_SECTIONS
-#assert(SPRITE_1X_GROUND_SEC_W * SPRITE_1X_GROUND_NUM_SECTIONS == SPRITE_1X_GROUND_W)
+
+sprite_ground_x := f32(SPRITE_1X_GROUND_X);
+sprite_ground_y := f32(SPRITE_1X_GROUND_Y);
+sprite_ground_w := f32(SPRITE_1X_GROUND_W);
+sprite_ground_h := f32(SPRITE_1X_GROUND_H);
+
+SCREEN_GROUND_X :: 0
+SCREEN_GROUND_Y :: 127 // TODO(ema): WINDOW_H(150) - BOTTOM_PAD(10) - GROUND_H(12) = 128... which one is right?
+SCREEN_GROUND_W :: DEFAULT_WINDOW_W - 2*SCREEN_GROUND_X
+SCREEN_GROUND_H :: 12
+
+screen_ground_x := f32(SCREEN_GROUND_X);
+screen_ground_y := f32(SCREEN_GROUND_Y);
+screen_ground_w := f32(SCREEN_GROUND_W);
+screen_ground_h := f32(SCREEN_GROUND_H);
 
 sprite_coordinates: Sprite_Coordinates;
 sprite_rects: Sprite_Rects;
@@ -305,6 +313,12 @@ main :: proc() {
 		trex_h_normal *= 2;
 		trex_w_duck *= 2;
 		trex_h_duck *= 2;
+		
+		
+		sprite_ground_x, sprite_ground_y = sprite_ground_x * 2, sprite_ground_y * 2;
+		sprite_ground_w, sprite_ground_h = sprite_ground_w * 2, sprite_ground_h * 2;
+		screen_ground_x, screen_ground_y = screen_ground_x * 2, screen_ground_y * 2;
+		screen_ground_w, screen_ground_h = screen_ground_w * 2, screen_ground_h * 2;
 	}
 	
 	raylib.SetTraceLogLevel(.ERROR);
@@ -372,18 +386,28 @@ main :: proc() {
 	obstacle_buffer: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
 	
 	////////////////////////////////
-	// Ground
+	// Ground variables
 	
-	// Coordinates on screen of where each sprite starts
-	ground_x: [SCREEN_GROUND_NUM_SECTIONS]i32;
-	// Coordinates in the spritesheet of where each sprite starts
-	sprite_1x_ground_x: [SPRITE_1X_GROUND_NUM_SECTIONS]i32;
+	Ground_Section :: struct {
+		screen_x: f32,
+		sprite_x: f32,
+	}
+	
+	screen_ground_sections: [2]Ground_Section; // Coordinates on screen of where each sprite starts
+	sprite_ground_offsets : [2]f32; // Coordinates in the spritesheet of where each sprite starts
 	ground_bump_threshold := f32(0.5);
 	
-	ground_x[0] = 0;
-	ground_x[1] = SCREEN_GROUND_SEC_W;
-	sprite_1x_ground_x[0] = SPRITE_1X_GROUND_X;
-	sprite_1x_ground_x[1] = SPRITE_1X_GROUND_X + SPRITE_1X_GROUND_SEC_W;
+	{
+		sprite_ground_offsets[0] = sprite_ground_x;
+		sprite_ground_offsets[1] = sprite_ground_x + 0.5*sprite_ground_w;
+		
+		screen_ground_sections[0].screen_x = screen_ground_x;
+		screen_ground_sections[1].screen_x = screen_ground_x + screen_ground_w;
+		
+		for &section in screen_ground_sections {
+			section.sprite_x = rand.float32() > ground_bump_threshold ? sprite_ground_offsets[0] : sprite_ground_offsets[1];
+		}
+	}
 	
 	// Attempt info
 	frame_count_since_attempt_start := 0;
@@ -562,14 +586,13 @@ main :: proc() {
 			// update horizon line (ground)
 			// TODO(ema): Fix this
 			{
-				delta := cast(i32)(trex_run_speed * TARGET_FPS * dt);
-				for _, dst_i in ground_x {
-					dst_x := ground_x[dst_i];
-					dst_x -= delta;
-					if dst_x < -SCREEN_GROUND_SEC_W {
-						dst_x += SCREEN_GROUND_W;
+				delta := trex_run_speed * TARGET_FPS * dt;
+				for &section, section_index in screen_ground_sections {
+					section.screen_x -= delta;
+					if section.screen_x + screen_ground_w < 0 {
+						section.screen_x += 2*screen_ground_w;
+						section.sprite_x = rand.float32() > ground_bump_threshold ? sprite_ground_offsets[0] : sprite_ground_offsets[1];
 					}
-					ground_x[dst_i] = dst_x;
 				}
 			}
 			
@@ -764,15 +787,12 @@ main :: proc() {
 		
 		// Draw ground
 		{
-			for dst_x, dst_i in ground_x {
-				// This re-uses the same source coordinates for multiple portions of the screen.
-				// This makes it more complicated to randomly select them, as setting the
-				// coordinates for what is outside the screen will also (potentially) set them
-				// for things inside the screen that share the same % index
-				src_x := sprite_1x_ground_x[dst_i % len(sprite_1x_ground_x)];
-				
-				pos := [2]f32 {f32(dst_x), SCREEN_GROUND_Y};
-				rec := raylib.Rectangle {f32(src_x), SPRITE_1X_GROUND_Y, SPRITE_1X_GROUND_SEC_W, SPRITE_1X_GROUND_H};
+			for section in screen_ground_sections {
+				pos := [2]f32 {section.screen_x, screen_ground_y};
+				rec := raylib.Rectangle {
+					section.sprite_x, sprite_ground_y,
+					sprite_ground_w / len(sprite_ground_offsets), sprite_ground_h
+				};
 				
 				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
 			}
