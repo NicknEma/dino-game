@@ -139,13 +139,11 @@ TEXT_HEIGHT :: 11
 ////////////////////////////////
 // Ground constants & types
 
-SPRITE_1X_GROUND_X :: 2
-SPRITE_1X_GROUND_Y :: 54
 SPRITE_1X_GROUND_W :: 600 // NOTE(ema): The width of a ground *SECTION*
 SPRITE_1X_GROUND_H :: 12
 
-sprite_ground_x := f32(SPRITE_1X_GROUND_X);
-sprite_ground_y := f32(SPRITE_1X_GROUND_Y);
+sprite_ground_x := SPRITE_1X_COORDINATES.horizon.x;
+sprite_ground_y := SPRITE_1X_COORDINATES.horizon.y;
 sprite_ground_w := f32(SPRITE_1X_GROUND_W);
 sprite_ground_h := f32(SPRITE_1X_GROUND_H);
 
@@ -314,8 +312,7 @@ main :: proc() {
 		trex_w_duck *= 2;
 		trex_h_duck *= 2;
 		
-		
-		sprite_ground_x, sprite_ground_y = sprite_ground_x * 2, sprite_ground_y * 2;
+		sprite_ground_x, sprite_ground_y = SPRITE_2X_COORDINATES.horizon.x, SPRITE_2X_COORDINATES.horizon.y;
 		sprite_ground_w, sprite_ground_h = sprite_ground_w * 2, sprite_ground_h * 2;
 		screen_ground_x, screen_ground_y = screen_ground_x * 2, screen_ground_y * 2;
 		screen_ground_w, screen_ground_h = screen_ground_w * 2, screen_ground_h * 2;
