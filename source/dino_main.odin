@@ -141,7 +141,7 @@ TEXT_HEIGHT :: 11
 
 SPRITE_1X_GROUND_X :: 2
 SPRITE_1X_GROUND_Y :: 54
-SPRITE_1X_GROUND_W :: 1200
+SPRITE_1X_GROUND_W :: 600 // NOTE(ema): The width of a ground *SECTION*
 SPRITE_1X_GROUND_H :: 12
 
 sprite_ground_x := f32(SPRITE_1X_GROUND_X);
@@ -394,18 +394,14 @@ main :: proc() {
 	}
 	
 	screen_ground_sections: [2]Ground_Section; // Coordinates on screen of where each sprite starts
-	sprite_ground_offsets : [2]f32; // Coordinates in the spritesheet of where each sprite starts
 	ground_bump_threshold := f32(0.5);
 	
 	{
-		sprite_ground_offsets[0] = sprite_ground_x;
-		sprite_ground_offsets[1] = sprite_ground_x + 0.5*sprite_ground_w;
-		
 		screen_ground_sections[0].screen_x = screen_ground_x;
 		screen_ground_sections[1].screen_x = screen_ground_x + screen_ground_w;
 		
 		for &section in screen_ground_sections {
-			section.sprite_x = rand.float32() > ground_bump_threshold ? sprite_ground_offsets[0] : sprite_ground_offsets[1];
+			section.sprite_x = sprite_ground_x + (rand.float32() > ground_bump_threshold ? 0 : sprite_ground_w);
 		}
 	}
 	
@@ -583,15 +579,15 @@ main :: proc() {
 		
 		// Simulate rest of the world
 		if trex_status != .Waiting && trex_status != .Crashed {
-			// update horizon line (ground)
-			// TODO(ema): Fix this
+			
+			// Update horizon line (ground)
 			{
 				delta := trex_run_speed * TARGET_FPS * dt;
-				for &section, section_index in screen_ground_sections {
+				for &section in screen_ground_sections {
 					section.screen_x -= delta;
 					if section.screen_x + screen_ground_w < 0 {
 						section.screen_x += 2*screen_ground_w;
-						section.sprite_x = rand.float32() > ground_bump_threshold ? sprite_ground_offsets[0] : sprite_ground_offsets[1];
+						section.sprite_x = sprite_ground_x + (rand.float32() > ground_bump_threshold ? 0 : sprite_ground_w);
 					}
 				}
 			}
@@ -791,7 +787,7 @@ main :: proc() {
 				pos := [2]f32 {section.screen_x, screen_ground_y};
 				rec := raylib.Rectangle {
 					section.sprite_x, sprite_ground_y,
-					sprite_ground_w / len(sprite_ground_offsets), sprite_ground_h
+					sprite_ground_w, sprite_ground_h
 				};
 				
 				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
