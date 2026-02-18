@@ -896,25 +896,34 @@ main :: proc() {
 		
 		// Draw game over panel
 		{
-			SPRITE_1X_RESTART_WIDTH  :: 36;
-			SPRITE_1X_RESTART_HEIGHT :: 32;
+			SPRITE_1X_RESTART_W :: 36;
+			SPRITE_1X_RESTART_H :: 32;
 			
-			sprite_restart_w := f32(SPRITE_1X_RESTART_WIDTH);
-			sprite_restart_h := f32(SPRITE_1X_RESTART_HEIGHT);
+			SCREEN_RESTART_W :: 36;
+			SCREEN_RESTART_H :: 32;
+			
+			sprite_restart_w := f32(SPRITE_1X_RESTART_W);
+			sprite_restart_h := f32(SPRITE_1X_RESTART_H);
+			
+			screen_restart_w := f32(SCREEN_RESTART_W);
+			screen_restart_h := f32(SCREEN_RESTART_H);
 			
 			if double_resolution {
 				sprite_restart_w, sprite_restart_h = 2*sprite_restart_w, 2*sprite_restart_h;
+				screen_restart_w, screen_restart_h = 2*screen_restart_w, 2*screen_restart_h;
 			}
 			
-			game_over_rect := raylib.Rectangle {
+			sprite_restart_icon_rec := raylib.Rectangle {
 				sprite_coordinates.restart_icon.x, sprite_coordinates.restart_icon.y,
 				sprite_restart_w, sprite_restart_h
 			};
 			
-			game_over_x := f32(window_w) / 2 - sprite_restart_w / 2;
-			game_over_y := f32(window_h) / 2;
+			screen_restart_icon_pos := [2]f32 {
+				f32(window_w) / 2 - screen_restart_w / 2,
+				f32(window_h) / 2
+			}
 			
-			raylib.DrawTextureRec(sprite_tex, game_over_rect, {game_over_x, game_over_y}, raylib.WHITE);
+			raylib.DrawTextureRec(sprite_tex, sprite_restart_icon_rec, screen_restart_icon_pos, raylib.WHITE);
 		}
 		
 		// Draw debug info
