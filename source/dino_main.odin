@@ -890,7 +890,7 @@ main :: proc() {
 		}
 		
 		// Draw game over panel
-		{
+		if trex_status == .Crashed {
 			// Draw text
 			{
 				SPRITE_1X_TEXT_Y ::  13;
