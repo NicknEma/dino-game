@@ -894,6 +894,30 @@ main :: proc() {
 			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_world_x, trex_world_y}, raylib.WHITE);
 		}
 		
+		// Draw game over panel
+		{
+			SPRITE_1X_RESTART_WIDTH  :: 36;
+			SPRITE_1X_RESTART_HEIGHT :: 32;
+			
+			sprite_restart_w := f32(SPRITE_1X_RESTART_WIDTH);
+			sprite_restart_h := f32(SPRITE_1X_RESTART_HEIGHT);
+			
+			if double_resolution {
+				sprite_restart_w, sprite_restart_h = 2*sprite_restart_w, 2*sprite_restart_h;
+			}
+			
+			game_over_rect := raylib.Rectangle {
+				sprite_coordinates.restart_icon.x, sprite_coordinates.restart_icon.y,
+				sprite_restart_w, sprite_restart_h
+			};
+			
+			game_over_x := f32(window_w) / 2 - sprite_restart_w / 2;
+			game_over_y := f32(window_h) / 2;
+			
+			raylib.DrawTextureRec(sprite_tex, game_over_rect, {game_over_x, game_over_y}, raylib.WHITE);
+		}
+		
+		// Draw debug info
 		when ODIN_DEBUG {
 			global_debug_text_x := i32(0);
 			if .Hotkeys in debug_draw_flags {
