@@ -131,11 +131,6 @@ trex_status_anim_frames_per_ms := [len(Trex_Status)]int {
 	Trex_Status.Ducking =  8,
 }
 
-TEXT_X :: 0
-TEXT_Y :: 13
-TEXT_WIDTH :: 191
-TEXT_HEIGHT :: 11
-
 ////////////////////////////////
 // Ground constants & types
 
@@ -896,34 +891,74 @@ main :: proc() {
 		
 		// Draw game over panel
 		{
-			SPRITE_1X_RESTART_W :: 36;
-			SPRITE_1X_RESTART_H :: 32;
-			
-			SCREEN_RESTART_W :: 36;
-			SCREEN_RESTART_H :: 32;
-			
-			sprite_restart_w := f32(SPRITE_1X_RESTART_W);
-			sprite_restart_h := f32(SPRITE_1X_RESTART_H);
-			
-			screen_restart_w := f32(SCREEN_RESTART_W);
-			screen_restart_h := f32(SCREEN_RESTART_H);
-			
-			if double_resolution {
-				sprite_restart_w, sprite_restart_h = 2*sprite_restart_w, 2*sprite_restart_h;
-				screen_restart_w, screen_restart_h = 2*screen_restart_w, 2*screen_restart_h;
+			// Draw text
+			{
+				SPRITE_1X_TEXT_Y ::  13;
+				
+				SPRITE_1X_TEXT_W :: 191;
+				SPRITE_1X_TEXT_H ::  11;
+				
+				SCREEN_TEXT_W :: 191;
+				SCREEN_TEXT_H ::  11;
+				
+				sprite_text_y := f32(SPRITE_1X_TEXT_Y);
+				
+				sprite_text_w := f32(SPRITE_1X_TEXT_W);
+				sprite_text_h := f32(SPRITE_1X_TEXT_H);
+				
+				screen_text_w := f32(SCREEN_TEXT_W);
+				screen_text_h := f32(SCREEN_TEXT_H);
+				
+				if double_resolution {
+					sprite_text_y                = 2*sprite_text_y;
+					sprite_text_w, sprite_text_h = 2*sprite_text_w, 2*sprite_text_h;
+					screen_text_w, screen_text_h = 2*screen_text_w, 2*screen_text_h;
+				}
+				
+				sprite_text_rec := raylib.Rectangle {
+					sprite_coordinates.text.x, sprite_coordinates.text.y + sprite_text_y,
+					sprite_text_w, sprite_text_h
+				};
+				
+				screen_text_pos := [2]f32 {
+					f32(window_w) / 2 - screen_text_w / 2, // TODO(ema): Round?
+					(f32(window_h) - 25) / 3 // TODO(ema): Round?
+				};
+				
+				raylib.DrawTextureRec(sprite_tex, sprite_text_rec, screen_text_pos, raylib.WHITE);
 			}
 			
-			sprite_restart_icon_rec := raylib.Rectangle {
-				sprite_coordinates.restart_icon.x, sprite_coordinates.restart_icon.y,
-				sprite_restart_w, sprite_restart_h
-			};
-			
-			screen_restart_icon_pos := [2]f32 {
-				f32(window_w) / 2 - screen_restart_w / 2,
-				f32(window_h) / 2
+			// Draw restart icon
+			{
+				SPRITE_1X_RESTART_ICON_W :: 36;
+				SPRITE_1X_RESTART_ICON_H :: 32;
+				
+				SCREEN_RESTART_ICON_W :: 36;
+				SCREEN_RESTART_ICON_H :: 32;
+				
+				sprite_restart_icon_w := f32(SPRITE_1X_RESTART_ICON_W);
+				sprite_restart_icon_h := f32(SPRITE_1X_RESTART_ICON_H);
+				
+				screen_restart_icon_w := f32(SCREEN_RESTART_ICON_W);
+				screen_restart_icon_h := f32(SCREEN_RESTART_ICON_H);
+				
+				if double_resolution {
+					sprite_restart_icon_w, sprite_restart_icon_h = 2*sprite_restart_icon_w, 2*sprite_restart_icon_h;
+					screen_restart_icon_w, screen_restart_icon_h = 2*screen_restart_icon_w, 2*screen_restart_icon_h;
+				}
+				
+				sprite_restart_icon_rec := raylib.Rectangle {
+					sprite_coordinates.restart_icon.x, sprite_coordinates.restart_icon.y,
+					sprite_restart_icon_w, sprite_restart_icon_h
+				};
+				
+				screen_restart_icon_pos := [2]f32 {
+					f32(window_w) / 2 - screen_restart_icon_w / 2,
+					f32(window_h) / 2
+				};
+				
+				raylib.DrawTextureRec(sprite_tex, sprite_restart_icon_rec, screen_restart_icon_pos, raylib.WHITE);
 			}
-			
-			raylib.DrawTextureRec(sprite_tex, sprite_restart_icon_rec, screen_restart_icon_pos, raylib.WHITE);
 		}
 		
 		// Draw debug info
