@@ -344,6 +344,8 @@ main :: proc() {
 	// TODO(ema): Better names for: drop velocity, x-accel (run accel), max speed (max run speed),
 	// drop coef (?); speed drop
 	
+	// TODO(ema): Implement CLEAR_TIME
+	
 	TREX_WORLD_POSITION_X :: 50;
 	TREX_MAX_JUMP_HEIGHT :: 30;
 	TREX_MIN_JUMP_HEIGHT :: 30;
