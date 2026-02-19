@@ -440,7 +440,6 @@ main :: proc() {
 	}
 	
 	clouds: small_array.Small_Array(MAX_CLOUDS, Cloud);
-	small_array.push_back(&clouds, make_cloud(x = f32(window_w)));
 	
 	make_cloud :: proc(x: f32, gen_y := context.random_generator, gen_gap := context.random_generator) -> Cloud {
 		cloud := Cloud {
@@ -539,9 +538,23 @@ main :: proc() {
 		
 		// Simulate trex
 		{
-			if trex_status == .Waiting {
-				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) ||
-					raylib.IsMouseButtonPressed(raylib.MouseButton.LEFT) {
+			if trex_status == .Waiting || trex_status == .Crashed {
+				should_start := false;
+				
+				if trex_status == .Waiting {
+					if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
+						should_start = true;
+					}
+				} else {
+					if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
+						should_start = true;
+						if !mute_sfx {
+							raylib.PlaySound(sound_press);
+						}
+					}
+				}
+				
+				if should_start {
 					trex_status = .Running;
 					attempt_count += 1;
 					
@@ -551,30 +564,20 @@ main :: proc() {
 					meter.flash_timer = 0.0;
 					meter.achievement = false;
 					
-					// set distance ran = 0
-					// set speed to initial
-					// set accel = 0
-					// reset trex position
-					// clear hazard queue
+					trex_distance_ran = 0;
+					trex_run_speed = TREX_INITIAL_RUN_SPEED;
+					trex_jump_count = 0;
+					trex_world_x = TREX_WORLD_POSITION_X;
+					trex_world_y = trex_ground_y_normal;
+					
 					small_array.clear(&obstacle_history);
 					small_array.clear(&obstacle_buffer);
-					// reset ground
-					// add cloud
+					// TODO(ema): Reset ground
+					small_array.clear(&clouds);
+					small_array.push_back(&clouds, make_cloud(x = f32(window_w)));
 					
 					frame_count_since_attempt_start = 0;
 					time_since_attempt_start = 0;
-					trex_run_speed = TREX_INITIAL_RUN_SPEED;
-					trex_jump_count = 0;
-				}
-			} else if trex_status == .Crashed {
-				// save high score
-				
-				if raylib.IsKeyPressed(raylib.KeyboardKey.SPACE) || raylib.IsKeyPressed(raylib.KeyboardKey.UP) {
-					if !mute_sfx {
-						raylib.PlaySound(sound_press);
-					}
-					
-					// restart
 				}
 			} else {
 				// if playing intro, play intro, else:
