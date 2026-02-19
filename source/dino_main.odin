@@ -403,23 +403,35 @@ main :: proc() {
 	////////////////////////////////
 	// Distance meter variables
 	
-	METER_MAX_DISTANCE_UNITS :: 5;
+	METER_DEFAULT_DIGIT_COUNT :: 5;
+	
 	METER_ACHIEVEMENT_DISTANCE :: 100;
 	METER_COEFFICIENT :: 0.025;
+	
 	METER_FLASH_DURATION :: 1000 / 4;
 	METER_FLASH_ITERATIONS :: 3;
 	
-	meter_max_score: int;
-	meter_high_score: int;
-	meter_achievement: bool;
-	meter_flash_timer: f32;
-	meter_flash_iterations: int;
-	meter_max_score_units: int = METER_MAX_DISTANCE_UNITS;
-	meter_display_value: int;
+	Meter :: struct {
+		score: i32,
+		digit_count: i32,
+		
+		high_score: i32,
+		high_digit_count: i32,
+		
+		flash_iterations: i32,
+		flash_timer: f32,
+		achievement: bool,
+	}
 	
-	for digit in 0..<meter_max_score_units {
-		meter_max_score *= 10;
-		meter_max_score += 9;
+	meter: Meter;
+	meter.digit_count = METER_DEFAULT_DIGIT_COUNT;
+	meter.high_digit_count = METER_DEFAULT_DIGIT_COUNT;
+	
+	when false {
+		for _ in 0..<meter.digit_count {
+			meter_max_score *= 10;
+			meter_max_score += 9;
+		}
 	}
 	
 	// Attempt info
@@ -483,8 +495,12 @@ main :: proc() {
 					trex_status = .Running;
 					attempt_count += 1;
 					
-					// set distance meter = 0
-					meter_achievement = false;
+					meter.score = 0;
+					meter.digit_count = METER_DEFAULT_DIGIT_COUNT;
+					meter.flash_iterations = 0;
+					meter.flash_timer = 0.0;
+					meter.achievement = false;
+					
 					// set distance ran = 0
 					// set speed to initial
 					// set accel = 0
@@ -766,7 +782,7 @@ main :: proc() {
 					}
 					
 					trex_status = .Crashed;
-					meter_high_score = max(meter_high_score, meter_display_value);
+					meter.high_score = max(meter.high_score, meter.score);
 				}
 			}
 		}
@@ -784,40 +800,39 @@ main :: proc() {
 			
 			// Update high score
 			{
-				if !meter_achievement {
-					meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
-					if meter > meter_max_score && meter_max_score_units == METER_MAX_DISTANCE_UNITS {
-						meter_max_score_units += 1;
-						meter_max_score = meter_max_score * 10 + 9;
+				if !meter.achievement {
+					score := cast(i32)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+					digit_count := cast(i32)math.count_digits_of_base(score, 10);
+					
+					if digit_count > meter.digit_count && meter.digit_count == METER_DEFAULT_DIGIT_COUNT {
+						meter.digit_count += 1;
+						// meter_max_score = meter_max_score * 10 + 9;
 					}
-					if meter > 0 {
-						if meter % METER_ACHIEVEMENT_DISTANCE == 0 {
-							meter_achievement = true;
-							meter_flash_timer = 0;
-							
-							if !mute_sfx {
-								raylib.PlaySound(sound_reached); // TODO(ema): Play on different channel?
-							}
+					
+					if score > 0 && score % METER_ACHIEVEMENT_DISTANCE == 0 {
+						meter.achievement = true;
+						meter.flash_timer = 0;
+						
+						if !mute_sfx {
+							raylib.PlaySound(sound_reached); // TODO(ema): Play on different channel?
 						}
-						meter_display_value = meter;
-					} else {
-						meter_display_value = meter;
 					}
+					
+					meter.score = score;
 				} else {
-					if meter_flash_iterations <= METER_FLASH_ITERATIONS {
-						meter_flash_timer += dt * 1000;
-						if meter_flash_timer < METER_FLASH_DURATION {
+					if meter.flash_iterations <= METER_FLASH_ITERATIONS {
+						meter.flash_timer += dt * 1000;
+						
+						if meter.flash_timer < METER_FLASH_DURATION {
 							meter_should_draw = false;
-						} else {
-							if meter_flash_timer > METER_FLASH_DURATION * 2 {
-								meter_flash_timer = 0;
-								meter_flash_iterations += 1;
-							}
+						} else if meter.flash_timer > METER_FLASH_DURATION * 2 {
+							meter.flash_iterations += 1;
+							meter.flash_timer = 0.0;
 						}
 					} else {
-						meter_achievement = false;
-						meter_flash_iterations = 0;
-						meter_flash_timer = 0;
+						meter.flash_iterations = 0;
+						meter.flash_timer = 0.0;
+						meter.achievement = false;
 					}
 				}
 			}
@@ -972,16 +987,18 @@ main :: proc() {
 				screen_meter_char_w, screen_meter_char_h = 2.0*screen_meter_char_w, 2.0*screen_meter_char_h;
 			}
 			
-			meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter_max_score_units) + 1.0));
+			meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter.digit_count) + 1.0));
 			meter_y := f32(5.0);
 			
-			meter := meter_display_value;
+			score := meter.score;
+			score_digits := make([]i32, meter.digit_count, context.temp_allocator);
+			for digit_index := meter.digit_count - 1; digit_index > -1; digit_index -= 1 {
+				score_digits[digit_index] = score % 10;
+				score /= 10;
+			}
 			
 			if meter_should_draw {
-				for digit_index := meter_max_score_units - 1; digit_index > -1; digit_index -= 1 {
-					digit := meter % 10;
-					meter /= 10;
-					
+				for digit, digit_index in score_digits {
 					sprite_digit_rec := raylib.Rectangle {
 						sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
 						sprite_meter_char_w, sprite_meter_char_h
@@ -999,22 +1016,27 @@ main :: proc() {
 			high_score_alpha := f32(0.8);
 			high_score_color := raylib.ColorAlpha(raylib.WHITE, high_score_alpha);
 			
-			high_score_offset := meter_x - (f32(meter_max_score_units) * 2.0) * sprite_meter_char_w; // TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
+			meter_x = meter_x - (f32(meter.digit_count) * 2.0) * sprite_meter_char_w; // TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
 			
-			high_score := meter_high_score;
+			@(static, rodata) HIGH_SCORE_PREFIX_INDICES := [?]i32 {10, 11, 12};
 			
-			if high_score > 0 {
-				for digit_index := meter_max_score_units - 1; digit_index > -1; digit_index -= 1 {
-					digit := high_score % 10;
-					high_score /= 10;
-					
+			score = meter.high_score;
+			score_digits = make([]i32, meter.high_digit_count + len(HIGH_SCORE_PREFIX_INDICES), context.temp_allocator);
+			copied := cast(i32)copy(score_digits[:], HIGH_SCORE_PREFIX_INDICES[:]);
+			for digit_index := meter.digit_count - 1 + copied; digit_index > -1 + copied; digit_index -= 1 {
+				score_digits[digit_index] = score % 10;
+				score /= 10;
+			}
+			
+			if meter.high_score > 0 {
+				for digit, digit_index in score_digits {
 					sprite_digit_rec := raylib.Rectangle {
 						sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
 						sprite_meter_char_w, sprite_meter_char_h
 					};
 					
 					screen_digit_pos := [2]f32 {
-						high_score_offset + screen_meter_char_w * f32(digit_index + 3),
+						meter_x + screen_meter_char_w * f32(digit_index),
 						meter_y
 					};
 					
