@@ -1000,6 +1000,30 @@ main :: proc() {
 					raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, raylib.WHITE);
 				}
 			}
+			
+			high_score_alpha := f32(0.8);
+			high_score_color := raylib.ColorAlpha(raylib.WHITE, high_score_alpha);
+			
+			high_score_offset := meter_x - (f32(meter_max_score_units) * 2.0) * screen_meter_char_w;
+			
+			high_score := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+			
+			for digit_index := meter_max_score_units; digit_index > 0; digit_index -= 1 {
+				digit := high_score % 10;
+				high_score /= 10;
+				
+				sprite_digit_rec := raylib.Rectangle {
+					sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
+					sprite_meter_char_w, sprite_meter_char_h
+				};
+				
+				screen_digit_pos := [2]f32 {
+					high_score_offset + screen_meter_char_w * f32(digit_index),
+					meter_y
+				};
+				
+				raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, high_score_color);
+			}
 		}
 		
 		// Draw game over panel
