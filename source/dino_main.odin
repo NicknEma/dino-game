@@ -418,6 +418,7 @@ main :: proc() {
 	meter_flash_timer: f32;
 	meter_flash_iterations: int;
 	meter_max_score_units: int = METER_MAX_DISTANCE_UNITS;
+	meter_display_value: int;
 	
 	for digit in 0..<meter_max_score_units {
 		meter_max_score *= 10;
@@ -796,6 +797,9 @@ main :: proc() {
 								raylib.PlaySound(sound_reached); // TODO(ema): Play on different channel?
 							}
 						}
+						meter_display_value = meter;
+					} else {
+						meter_display_value = meter;
 					}
 				} else {
 					if meter_flash_iterations <= METER_FLASH_ITERATIONS {
@@ -971,7 +975,8 @@ main :: proc() {
 			meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter_max_score_units) + 1.0));
 			meter_y := f32(5.0);
 			
-			meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+			// meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+			meter := meter_display_value;
 			
 			for digit_index := 5; digit_index > 0; digit_index -= 1 {
 				digit := meter % 10;
