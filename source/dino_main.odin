@@ -412,9 +412,7 @@ main :: proc() {
 	meter_current_distance: f32;
 	meter_max_score: int;
 	meter_high_score: int;
-	meter_digits: []int;
 	meter_achievement: bool;
-	meter_default_string: [dynamic]byte;
 	meter_flash_timer: f32;
 	meter_flash_iterations: int;
 	meter_max_score_units: int = METER_MAX_DISTANCE_UNITS;
@@ -823,8 +821,6 @@ main :: proc() {
 					}
 				}
 			}
-			
-			// play new high score sound
 			
 			// if trex changed status
 			//  animation frame index = 0
