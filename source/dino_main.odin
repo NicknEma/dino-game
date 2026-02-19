@@ -486,6 +486,7 @@ main :: proc() {
 					attempt_count += 1;
 					
 					// set distance meter = 0
+					meter_achievement = false;
 					// set distance ran = 0
 					// set speed to initial
 					// set accel = 0
@@ -780,7 +781,23 @@ main :: proc() {
 				trex_run_speed += TREX_X_ACCELERATION;
 			}
 			
-			// update high score
+			// Update high score
+			{
+				if !meter_achievement {
+					meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+					if meter > 0 {
+						if meter % METER_ACHIEVEMENT_DISTANCE == 0 {
+							meter_achievement = true;
+							meter_flash_timer = 0;
+							
+							if !mute_sfx {
+								raylib.PlaySound(sound_reached); // TODO(ema): Play on different channel?
+							}
+						}
+					}
+				}
+			}
+			
 			// play new high score sound
 			
 			// if trex changed status
