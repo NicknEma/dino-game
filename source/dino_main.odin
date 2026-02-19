@@ -67,34 +67,51 @@ Sprite_Coordinates :: struct {
 	text: [2]f32
 }
 
-SPRITE_1X_RECTS :: Sprite_Rects {
-	trex_waiting = {
+Trex_Status :: enum {
+	Waiting, Running, Ducking, Jumping, Crashed
+};
+
+@(rodata)
+trex_status_anim_frames_per_ms := [Trex_Status]int {
+	.Running = 12,
+	.Waiting =  3,
+	.Crashed = 60,
+	.Jumping = 60,
+	.Ducking =  8,
+}
+
+SPRITE_1X_TREX_RECTS :: [Trex_Status][]raylib.Rectangle {
+	.Waiting = {
 		{  0,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
-		{ 40,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
+		{ 44,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}, // TODO(ema): This was 40 before, where did it come from?
 	},
-	trex_running = {
+	.Running = {
 		{ 88,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
 		{132,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
 	},
-	trex_ducking = {
+	.Ducking = {
 		{262, 17, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_DUCK},
 		{321, 17, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_DUCK}
 	},
-	trex_jumping = {
+	.Jumping = {
 		{  0,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
 	},
-	trex_crashed = {
+	.Crashed = {
 		{220,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
 	},
 }
 
-// NOTE(ema): From the top-left corner of the entity sub-sprite
-Sprite_Rects :: struct {
-	trex_waiting: [2]raylib.Rectangle,
-	trex_running: [2]raylib.Rectangle,
-	trex_ducking: [2]raylib.Rectangle,
-	trex_jumping: [1]raylib.Rectangle,
-	trex_crashed: [1]raylib.Rectangle,
+sprite_trex_rects: [Trex_Status][]raylib.Rectangle;
+
+when false {
+	// NOTE(ema): From the top-left corner of the entity sub-sprite
+	Sprite_Rects :: struct {
+		trex_waiting: [2]raylib.Rectangle,
+		trex_running: [2]raylib.Rectangle,
+		trex_ducking: [2]raylib.Rectangle,
+		trex_jumping: [1]raylib.Rectangle,
+		trex_crashed: [1]raylib.Rectangle,
+	}
 }
 
 SPRITE_1X_TREX_WIDTH_NORMAL  ::  44
@@ -119,19 +136,6 @@ trex_collision_boxes_ducking := [?]raylib.Rectangle {
 	{ 1, 18, 55, 25}
 }
 
-Trex_Status :: enum {
-	Waiting, Running, Ducking, Jumping, Crashed
-};
-
-@(rodata)
-trex_status_anim_frames_per_ms := [len(Trex_Status)]int {
-	Trex_Status.Running = 12,
-	Trex_Status.Waiting =  3,
-	Trex_Status.Crashed = 60,
-	Trex_Status.Jumping = 60,
-	Trex_Status.Ducking =  8,
-}
-
 ////////////////////////////////
 // Ground constants & types
 
@@ -154,7 +158,6 @@ screen_ground_w := f32(SCREEN_GROUND_W);
 screen_ground_h := f32(SCREEN_GROUND_H);
 
 sprite_coordinates: Sprite_Coordinates;
-sprite_rects: Sprite_Rects;
 sprite_bytes: []u8;
 
 ////////////////////////////////
@@ -288,7 +291,7 @@ main :: proc() {
 	
 	window_w, window_h = DEFAULT_WINDOW_W, DEFAULT_WINDOW_H;
 	sprite_coordinates = SPRITE_1X_COORDINATES;
-	sprite_rects = SPRITE_1X_RECTS;
+	sprite_trex_rects = SPRITE_1X_TREX_RECTS;
 	sprite_bytes = SPRITE_1X;
 	trex_w_normal = SPRITE_1X_TREX_WIDTH_NORMAL;
 	trex_h_normal = SPRITE_1X_TREX_HEIGHT_NORMAL;
@@ -297,11 +300,9 @@ main :: proc() {
 	if double_resolution {
 		window_w, window_h = 2*DEFAULT_WINDOW_W, 2*DEFAULT_WINDOW_H;
 		sprite_coordinates = SPRITE_2X_COORDINATES;
-		for &r in sprite_rects.trex_jumping do r = double_rect(r);
-		for &r in sprite_rects.trex_crashed do r = double_rect(r);
-		for &r in sprite_rects.trex_waiting do r = double_rect(r);
-		for &r in sprite_rects.trex_running do r = double_rect(r);
-		for &r in sprite_rects.trex_ducking do r = double_rect(r);
+		for status in sprite_trex_rects {
+			for &rec in status do rec = double_rect(rec);
+		}
 		sprite_bytes = SPRITE_2X;
 		trex_w_normal *= 2;
 		trex_h_normal *= 2;
@@ -335,43 +336,61 @@ main :: proc() {
 	}
 	
 	////////////////////////////////
-	// T-rex variables
+	// Trex variables
 	
 	// TODO(ema): Better names for: drop velocity, x-accel (run accel), max speed (max run speed),
 	// drop coef (?); speed drop
 	
 	// TODO(ema): Implement CLEAR_TIME
 	
-	TREX_WORLD_POSITION_X :: 50;
+	TREX_SCREEN_POSITION_X :: 50;
+	
+	TREX_INITIAL_RUN_SPEED :: 6;
+	TREX_MAX_RUN_SPEED     :: 13;
+	TREX_RUN_ACCELERATION  :: 0.001;
+	
 	TREX_MAX_JUMP_HEIGHT :: 30;
 	TREX_MIN_JUMP_HEIGHT :: 30;
 	TREX_DROP_VELOCITY :: -5;
-	TREX_INITIAL_RUN_SPEED :: 6;
-	TREX_X_ACCELERATION :: 0.001;
-	TREX_MAX_SPEED :: 13;
 	TREX_GRAVITY :: 0.6;
-	SPEED_DROP_COEFFICIENT :: 3;
+	TREX_SPEED_DROP_COEFFICIENT :: 3;
 	TREX_START_JUMP_VELOCITY :: -10;
 	
-	trex_status := Trex_Status.Waiting;
+	TREX_WAITING_ANIM_BLINK_TIMING :: 7000;
+	
+	trex_screen_position_x := f32(TREX_SCREEN_POSITION_X);
+	if double_resolution {
+		trex_screen_position_x *= 2;
+	}
 	
 	trex_ground_y_normal := f32(window_h - bottom_pad) - trex_h_normal;
 	trex_ground_y_duck := f32(window_h - bottom_pad) - trex_h_duck;
 	
-	trex_world_x := f32(TREX_WORLD_POSITION_X);
-	trex_world_y := trex_ground_y_normal;
-	if double_resolution {
-		trex_world_x *= 2;
+	Trex :: struct {
+		status: Trex_Status,
+		hitboxes: []raylib.Rectangle, // TODO(ema): Is it necessary? Can be inferred at any time from the status
+		screen_pos: [2]f32,
+		
+		distance_ran: f32,
+		run_speed: f32,
+		
+		jump_velocity: f32,
+		reached_min_height: bool,
+		speed_drop: bool,
+		
+		waiting_anim_blink_delay: f32,
+		waiting_anim_start_time: f32,
+		anim_frame_index: i32,
+		anim_timer: f32,
 	}
 	
-	trex_min_jump_height := f32(trex_ground_y_normal - TREX_MIN_JUMP_HEIGHT);
+	trex: Trex;
+	trex.status = .Waiting;
 	
-	trex_collision_boxes: []raylib.Rectangle;
-	trex_jump_velocity: f32;
-	trex_reached_min_height: bool;
-	trex_distance_ran: f32;
-	trex_speed_drop: bool;
-	trex_run_speed: f32;
+	trex.screen_pos.x = trex_screen_position_x;
+	trex.screen_pos.y = trex_ground_y_normal;
+	
+	trex_min_jump_height := f32(trex_ground_y_normal - TREX_MIN_JUMP_HEIGHT);
 	trex_jump_count: int;
 	
 	////////////////////////////////
@@ -478,6 +497,7 @@ main :: proc() {
 	// Attempt info
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
+	time_since_startup := f32(0);
 	
 	// Session info
 	attempt_count := 0;
@@ -520,20 +540,21 @@ main :: proc() {
 			}
 			
 			if raylib.IsKeyPressed(raylib.KeyboardKey.KP_ADD) {
-				trex_run_speed = min(1.1*trex_run_speed, TREX_MAX_SPEED);
+				trex.run_speed = min(1.1*trex.run_speed, TREX_MAX_RUN_SPEED);
 			}
 			
 			if raylib.IsKeyPressed(raylib.KeyboardKey.KP_SUBTRACT) {
-				trex_run_speed = max(0.9*trex_run_speed, TREX_INITIAL_RUN_SPEED);
+				trex.run_speed = max(0.9*trex.run_speed, TREX_INITIAL_RUN_SPEED);
 			}
 		}
 		
 		// Simulate trex
+		trex_prev_status := trex.status;
 		{
-			if trex_status == .Waiting || trex_status == .Crashed {
+			if trex.status == .Waiting || trex.status == .Crashed {
 				should_start := false;
 				
-				if trex_status == .Waiting {
+				if trex.status == .Waiting {
 					if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
 						should_start = true;
 					}
@@ -547,7 +568,7 @@ main :: proc() {
 				}
 				
 				if should_start {
-					trex_status = .Running;
+					trex.status = .Running;
 					attempt_count += 1;
 					
 					meter.score = 0;
@@ -559,11 +580,12 @@ main :: proc() {
 						meter.high_digit_count = METER_DEFAULT_DIGIT_COUNT;
 					}
 					
-					trex_distance_ran = 0;
-					trex_run_speed = TREX_INITIAL_RUN_SPEED;
+					trex.distance_ran = 0;
+					trex.run_speed = TREX_INITIAL_RUN_SPEED;
+					trex.screen_pos.x = trex_screen_position_x;
+					trex.screen_pos.y = trex_ground_y_normal;
+					
 					trex_jump_count = 0;
-					trex_world_x = TREX_WORLD_POSITION_X;
-					trex_world_y = trex_ground_y_normal;
 					
 					small_array.clear(&obstacle_history);
 					small_array.clear(&obstacle_buffer);
@@ -577,82 +599,87 @@ main :: proc() {
 			} else {
 				// if playing intro, play intro, else:
 				
-				trex_collision_boxes = trex_collision_boxes_running[:];
-				
 				// TODO(ema): Maybe loop over this switch until prev status == status? so
 				// it doesn't feel like the inputs are happening 1 frame later
-				#partial switch trex_status {
+				#partial switch trex.status {
 					case .Running: {
-						trex_world_y = trex_ground_y_normal;
+						trex.hitboxes = trex_collision_boxes_running[:];
+						trex.screen_pos.y = trex_ground_y_normal;
 						
 						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
-							trex_status = .Ducking;
+							trex.status = .Ducking;
 						}
 						
-						if raylib.IsKeyPressed(raylib.KeyboardKey.UP) && trex_status != .Ducking {
+						if raylib.IsKeyPressed(raylib.KeyboardKey.UP) && trex.status != .Ducking {
 							if !mute_sfx {
 								raylib.PlaySound(sound_press);
 							}
-							trex_status = .Jumping;
 							
-							trex_jump_velocity = TREX_START_JUMP_VELOCITY - (trex_run_speed / 10.0);
-							trex_reached_min_height = false;
+							trex.status = .Jumping;
+							
+							trex.jump_velocity = TREX_START_JUMP_VELOCITY - (trex.run_speed / 10.0);
+							trex.reached_min_height = false;
 						}
 					}
 					
 					case .Ducking: {
-						trex_world_y = trex_ground_y_duck;
-						trex_collision_boxes = trex_collision_boxes_ducking[:];
+						trex.hitboxes = trex_collision_boxes_ducking[:];
+						trex.screen_pos.y = trex_ground_y_duck;
 						
 						if raylib.IsKeyUp(raylib.KeyboardKey.DOWN) {
-							trex_status = .Running;
+							trex.status = .Running;
 						}
 					}
 					
 					case .Jumping: {
+						trex.hitboxes = trex_collision_boxes_running[:];
+						
+						// TODO(ema): Rename this variable
+						// TODO(ema): Review MS_PER_FRAME
 						z := dt * 1000.0 / MS_PER_FRAME;
 						
 						if raylib.IsKeyReleased(raylib.KeyboardKey.UP) {
-							if trex_reached_min_height && trex_jump_velocity < TREX_DROP_VELOCITY {
-								trex_jump_velocity = TREX_DROP_VELOCITY;
+							if trex.reached_min_height && trex.jump_velocity < TREX_DROP_VELOCITY {
+								trex.jump_velocity = TREX_DROP_VELOCITY;
 							}
 						}
 						
 						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
-							if !trex_speed_drop {
-								trex_jump_velocity = 1;
-								trex_speed_drop = true;
+							if !trex.speed_drop {
+								trex.jump_velocity = 1;
+								trex.speed_drop = true;
 							}
 							
-							trex_world_y += trex_jump_velocity * z * SPEED_DROP_COEFFICIENT;
+							trex.screen_pos.y += trex.jump_velocity * z * TREX_SPEED_DROP_COEFFICIENT;
 						} else {
-							trex_world_y += trex_jump_velocity * z;
+							trex.screen_pos.y += trex.jump_velocity * z;
 						}
 						
-						trex_jump_velocity += TREX_GRAVITY * z;
+						trex.jump_velocity += TREX_GRAVITY * z;
 						
-						if trex_world_y < trex_min_jump_height || trex_speed_drop {
-							trex_reached_min_height = true;
+						if trex.screen_pos.y < trex_min_jump_height || trex.speed_drop {
+							trex.reached_min_height = true;
 						}
 						
-						if trex_world_y < TREX_MAX_JUMP_HEIGHT || trex_speed_drop {
-							if trex_reached_min_height && trex_jump_velocity < TREX_DROP_VELOCITY {
-								trex_jump_velocity = TREX_DROP_VELOCITY;
+						if trex.screen_pos.y < TREX_MAX_JUMP_HEIGHT || trex.speed_drop {
+							if trex.reached_min_height && trex.jump_velocity < TREX_DROP_VELOCITY {
+								trex.jump_velocity = TREX_DROP_VELOCITY;
 							}
 						}
 						
-						if trex_world_y > trex_ground_y_normal {
-							trex_world_y = trex_ground_y_normal;
-							trex_jump_velocity = 0;
-							trex_status = .Running;
-							trex_speed_drop = false;
-							// @Maybe add: if UP pressed, keep status = jumping, else set status = running
+						if trex.screen_pos.y > trex_ground_y_normal {
+							trex.screen_pos.y = trex_ground_y_normal;
+							trex.jump_velocity = 0;
+							trex.status = .Running;
+							trex.speed_drop = false;
+							
+							// TODO(ema): Maybe add: if UP pressed, keep status = jumping, else set status = running
 						}
 					}
 					
 					case: {
 						raylib.TraceLog(.ERROR, strings.clone_to_cstring(fmt.tprintf("Invalid switch case %v",
-																					 trex_status),
+																					 trex.status),
 																		 context.temp_allocator));
 					}
 				}
@@ -660,11 +687,11 @@ main :: proc() {
 		}
 		
 		// Simulate rest of the world
-		if trex_status != .Waiting && trex_status != .Crashed {
+		if trex.status != .Waiting && trex.status != .Crashed {
 			
 			// Update horizon line (ground)
 			{
-				delta := trex_run_speed * TARGET_FPS * dt;
+				delta := trex.run_speed * TARGET_FPS * dt;
 				for &section in screen_ground_sections {
 					section.screen_x -= delta;
 					if section.screen_x + screen_ground_w < 0 {
@@ -676,7 +703,7 @@ main :: proc() {
 			
 			// Update clouds
 			{
-				delta := CLOUD_SPEED * TARGET_FPS * dt * trex_run_speed;
+				delta := CLOUD_SPEED * TARGET_FPS * dt * trex.run_speed;
 				
 				passed_clouds: small_array.Small_Array(len(clouds.data), int);
 				for cloud_index := 0; cloud_index < small_array.len(clouds); cloud_index += 1 {
@@ -707,7 +734,7 @@ main :: proc() {
 			}
 			
 			// TODO(ema): Inline these functions
-			update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
+			update_obstacles(&obstacle_history, &obstacle_buffer, trex.run_speed, dt, f32(window_w));
 			
 			update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 									 buffer: ^small_array.Small_Array($B, Obstacle),
@@ -843,8 +870,8 @@ main :: proc() {
 				obstacle_loop: for &obstacle in small_array.slice(&obstacle_buffer) {
 					for obstacle_hitbox in small_array.slice(&obstacle.hitboxes) {
 						rectA := shift_rect(obstacle_hitbox, obstacle.world_position);
-						for trex_hitbox in trex_collision_boxes {
-							rectB := shift_rect(trex_hitbox, {trex_world_x, trex_world_y});
+						for trex_hitbox in trex.hitboxes {
+							rectB := shift_rect(trex_hitbox, trex.screen_pos);
 							hit = raylib.CheckCollisionRecs(rectA, rectB);
 							if hit {
 								break obstacle_loop;
@@ -858,7 +885,7 @@ main :: proc() {
 						raylib.PlaySound(sound_hit);
 					}
 					
-					trex_status = .Crashed;
+					trex.status = .Crashed;
 					meter.score = meter.up_to_date_score;
 					meter.high_score = max(meter.high_score, meter.score);
 				}
@@ -867,18 +894,18 @@ main :: proc() {
 		
 		meter_should_draw := true;
 		
-		// Simulate trex run & animate
-		if trex_status != .Crashed && trex_status != .Waiting {
+		// Simulate trex run
+		if trex.status != .Crashed && trex.status != .Waiting {
 			// NOTE(ema): Don't do this before collision checking, because *technically*
 			// you haven't run the distance if you crashed
-			trex_distance_ran += trex_run_speed * dt * 1000 / MS_PER_FRAME;
-			if trex_run_speed < TREX_MAX_SPEED {
-				trex_run_speed += TREX_X_ACCELERATION;
+			trex.distance_ran += trex.run_speed * dt * 1000 / MS_PER_FRAME; // TODO(ema): Review MS_PER_FRAME
+			if trex.run_speed < TREX_MAX_RUN_SPEED {
+				trex.run_speed += TREX_RUN_ACCELERATION;
 			}
 			
 			// Update high score
 			{
-				score := cast(i32)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+				score := cast(i32)math.round(METER_COEFFICIENT * math.ceil(trex.distance_ran));
 				meter.up_to_date_score = score;
 				if !meter.achievement {
 					digit_count := cast(i32)math.count_digits_of_base(score, 10);
@@ -914,17 +941,39 @@ main :: proc() {
 					}
 				}
 			}
+		}
+		
+		// Animate trex
+		{
+			trex.anim_timer += dt;
 			
-			// if trex changed status
-			//  animation frame index = 0
-			//  if status == waiting
-			//   waiting anim start time = current time
-			//   blink delay = random() * BLINK_TIMING
-			// if status == waiting
-			//  if time - waiting anim start time >= blink delay
-			//   set blink sprite
-			//   set new blink delay
-			//   waiting anim start time = current time
+			reset_blink :: proc(trex: ^Trex, time_since_startup: f32) {
+				trex.waiting_anim_start_time = time_since_startup;
+				trex.waiting_anim_blink_delay = rand.float32() * TREX_WAITING_ANIM_BLINK_TIMING;
+			}
+			
+			if trex_prev_status != trex.status {
+				trex.anim_frame_index = 0;
+				
+				if trex.status == .Waiting {
+					reset_blink(&trex, time_since_startup);
+				}
+			}
+			
+			if trex.status == .Waiting {
+				trex.anim_frame_index = 0;
+				if time_since_startup - trex.waiting_anim_start_time >= trex.waiting_anim_blink_delay {
+					reset_blink(&trex, time_since_startup);
+					trex.anim_frame_index = 1;
+				}
+			} else {
+				anim_frames_per_ms := cast(f32)trex_status_anim_frames_per_ms[trex.status];
+				anim_ms_per_frame  := 1.0 / anim_frames_per_ms;
+				if trex.anim_timer >= anim_ms_per_frame {
+					trex.anim_frame_index = (trex.anim_frame_index == cast(i32)len(sprite_trex_rects[trex.status]) - 1) ? 0 : (trex.anim_frame_index + 1);
+					trex.anim_timer = 0;
+				}
+			}
 		}
 		
 		raylib.BeginDrawing();
@@ -1013,42 +1062,10 @@ main :: proc() {
 		
 		// Draw trex
 		{
-			trex_sprite_rect: raylib.Rectangle;
-			rect_slice: []raylib.Rectangle;
-			trex_anim_frames_per_ms: int;
+			trex_sprite_rect := sprite_trex_rects[trex.status][trex.anim_frame_index];
+			trex_sprite_rect  = shift_rect(trex_sprite_rect, sprite_coordinates.trex);
 			
-			switch trex_status {
-				case .Waiting: {
-					rect_slice = sprite_rects.trex_waiting[:1]; // Temporary :1
-					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Waiting];
-				}
-				
-				case .Crashed: {
-					rect_slice = sprite_rects.trex_crashed[:1];
-					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Crashed];
-				}
-				
-				case .Running: {
-					rect_slice = sprite_rects.trex_running[:];
-					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Running];
-				}
-				
-				case .Ducking: {
-					rect_slice = sprite_rects.trex_ducking[:];
-					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Ducking];
-				}
-				
-				case .Jumping: {
-					rect_slice = sprite_rects.trex_jumping[:];
-					trex_anim_frames_per_ms = trex_status_anim_frames_per_ms[Trex_Status.Jumping];
-				}
-			}
-			
-			rect_index := (frame_count_since_attempt_start / trex_anim_frames_per_ms) % len(rect_slice);
-			trex_sprite_rect = rect_slice[rect_index];
-			trex_sprite_rect = shift_rect(trex_sprite_rect, sprite_coordinates.trex);
-			
-			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_world_x, trex_world_y}, raylib.WHITE);
+			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex.screen_pos, raylib.WHITE);
 		}
 		
 		// Draw score
@@ -1128,7 +1145,7 @@ main :: proc() {
 		}
 		
 		// Draw game over panel
-		if trex_status == .Crashed {
+		if trex.status == .Crashed {
 			// Draw text
 			{
 				SPRITE_1X_TEXT_Y ::  13;
@@ -1220,8 +1237,8 @@ main :: proc() {
 			}
 			
 			if .Hitboxes in debug_draw_flags {
-				for r in trex_collision_boxes {
-					shifted := shift_rect(r, {trex_world_x, trex_world_y});
+				for r in trex.hitboxes {
+					shifted := shift_rect(r, trex.screen_pos);
 					raylib.DrawRectangleLinesEx(shifted, 1, raylib.RED);
 				}
 				
@@ -1237,14 +1254,6 @@ main :: proc() {
 					raylib.DrawLineV({gap_start, gap_y}, {gap_end, gap_y},
 									 o.color);
 				}
-				
-				when false {
-					raylib.DrawLineV({0, trex_world_y}, {f32(window_w), trex_world_y}, raylib.GREEN);
-					raylib.DrawLineV({0, trex_ground_y_normal}, {f32(window_w), trex_ground_y_normal}, raylib.RED);
-					raylib.DrawLineV({0, trex_min_jump_height}, {f32(window_w), trex_min_jump_height}, raylib.BLUE);
-					raylib.DrawText("trex current y", 10, i32(trex_world_y + 5), 20, raylib.GREEN);
-					raylib.DrawText("trex ground y", window_w / 2, i32(trex_ground_y_normal + 5), 20, raylib.RED);
-				}
 			}
 			
 			if .Variables in debug_draw_flags {
@@ -1254,11 +1263,11 @@ main :: proc() {
 				
 				variables := [?]string {
 					fmt.tprintf("%v: %v", name_of(MS_PER_FRAME), MS_PER_FRAME),
-					fmt.tprintf("%v: %v", name_of(trex_status), trex_status),
-					fmt.tprintf("%v: %v", name_of(trex_distance_ran), trex_distance_ran),
-					fmt.tprintf("%v: %v", name_of(math.ceil(trex_distance_ran)), math.ceil(trex_distance_ran)),
-					fmt.tprintf("%v: %v", name_of(math.round(METER_COEFFICIENT*math.ceil(trex_distance_ran))), math.round(METER_COEFFICIENT*math.ceil(trex_distance_ran))),
-					fmt.tprintf("%v: %v", name_of(trex_run_speed), trex_run_speed),
+					fmt.tprintf("%v: %v", name_of(trex.status), trex.status),
+					fmt.tprintf("%v: %v", name_of(trex.run_speed), trex.run_speed),
+					fmt.tprintf("%v: %v", name_of(trex.waiting_anim_start_time), trex.waiting_anim_start_time),
+					fmt.tprintf("%v: %v", name_of(trex.anim_timer), trex.anim_timer),
+					fmt.tprintf("%v: %v", name_of(trex.waiting_anim_blink_delay), trex.waiting_anim_blink_delay),
 				};
 				
 				max_text_w := i32(0);
@@ -1318,6 +1327,7 @@ main :: proc() {
 		
 		frame_count_since_attempt_start += 1;
 		time_since_attempt_start += dt;
+		time_since_startup += dt;
 	}
 }
 
