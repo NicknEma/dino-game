@@ -987,61 +987,60 @@ main :: proc() {
 				screen_meter_char_w, screen_meter_char_h = 2.0*screen_meter_char_w, 2.0*screen_meter_char_h;
 			}
 			
-			meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter.digit_count) + 1.0));
-			meter_y := f32(5.0);
-			
-			score := meter.score;
-			score_digits := make([]i32, meter.digit_count, context.temp_allocator);
-			for digit_index := meter.digit_count - 1; digit_index > -1; digit_index -= 1 {
-				score_digits[digit_index] = score % 10;
-				score /= 10;
+			draw_meter :: proc(score: i32, digit_count: i32, prefix_indices: []i32, sprite_tex: raylib.Texture, sprite_base_rec: raylib.Rectangle,
+							   screen_base_pos: [2]f32, sprite_w: f32, screen_w: f32, color: raylib.Color) {
+				score := score;
+				score_digits := make([]i32, digit_count + cast(i32)len(prefix_indices), context.temp_allocator);
+				start := cast(i32)copy(score_digits[:], prefix_indices);
+				for digit_index := digit_count - 1 + start; digit_index > -1 + start; digit_index -= 1 {
+					score_digits[digit_index] = score % 10;
+					score /= 10;
+				}
+				
+				for digit, digit_index in score_digits {
+					sprite_rec := shift_rect(sprite_base_rec, {sprite_w * f32(digit), 0.0});
+					screen_pos := screen_base_pos + {screen_w * f32(digit_index), 0.0};
+					
+					raylib.DrawTextureRec(sprite_tex, sprite_rec, screen_pos, color);
+				}
 			}
+			
+			sprite_digit_base_rec := raylib.Rectangle {
+				sprite_coordinates.text.x, sprite_coordinates.text.y,
+				sprite_meter_char_w, sprite_meter_char_h
+			};
+			
+			score_meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter.digit_count) + 1.0));
+			score_meter_y := f32(5.0);
 			
 			if meter_should_draw {
-				for digit, digit_index in score_digits {
-					sprite_digit_rec := raylib.Rectangle {
-						sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
-						sprite_meter_char_w, sprite_meter_char_h
-					};
-					
-					screen_digit_pos := [2]f32 {
-						meter_x + screen_meter_char_w * f32(digit_index),
-						meter_y
-					};
-					
-					raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, raylib.WHITE);
-				}
+				screen_digit_base_pos := [2]f32 {
+					score_meter_x, score_meter_y
+				};
+				
+				draw_meter(meter.score, meter.digit_count, nil, sprite_tex, sprite_digit_base_rec, screen_digit_base_pos,
+						   sprite_meter_char_w, screen_meter_char_w, raylib.WHITE);
 			}
 			
-			high_score_alpha := f32(0.8);
-			high_score_color := raylib.ColorAlpha(raylib.WHITE, high_score_alpha);
-			
-			meter_x = meter_x - (f32(meter.digit_count) * 2.0) * sprite_meter_char_w; // TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
-			
-			@(static, rodata) HIGH_SCORE_PREFIX_INDICES := [?]i32 {10, 11, 12};
-			
-			score = meter.high_score;
-			score_digits = make([]i32, meter.high_digit_count + len(HIGH_SCORE_PREFIX_INDICES), context.temp_allocator);
-			copied := cast(i32)copy(score_digits[:], HIGH_SCORE_PREFIX_INDICES[:]);
-			for digit_index := meter.digit_count - 1 + copied; digit_index > -1 + copied; digit_index -= 1 {
-				score_digits[digit_index] = score % 10;
-				score /= 10;
-			}
+			// TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
+			high_score_meter_x := score_meter_x - (f32(meter.digit_count) * 2.0) * sprite_meter_char_w;
+			high_score_meter_y := score_meter_y;
 			
 			if meter.high_score > 0 {
-				for digit, digit_index in score_digits {
-					sprite_digit_rec := raylib.Rectangle {
-						sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
-						sprite_meter_char_w, sprite_meter_char_h
-					};
-					
-					screen_digit_pos := [2]f32 {
-						meter_x + screen_meter_char_w * f32(digit_index),
-						meter_y
-					};
-					
-					raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, high_score_color);
-				}
+				high_score_alpha := f32(0.8);
+				high_score_color := raylib.ColorAlpha(raylib.WHITE, high_score_alpha);
+				
+				// NOTE(ema): Since the texture contains the character images in the form of the
+				// string "0123456789HI ", we can use hardcoded "indices" to indicate chars
+				// that aren't digits (10 for H, 11 for I, 12 for empty space)
+				@(static, rodata) HIGH_SCORE_PREFIX_INDICES := [?]i32 {10, 11, 12};
+				
+				screen_digit_base_pos := [2]f32 {
+					high_score_meter_x, high_score_meter_y
+				};
+				
+				draw_meter(meter.high_score, meter.high_digit_count, HIGH_SCORE_PREFIX_INDICES[:], sprite_tex, sprite_digit_base_rec, screen_digit_base_pos,
+						   sprite_meter_char_w, screen_meter_char_w, high_score_color);
 			}
 		}
 		
