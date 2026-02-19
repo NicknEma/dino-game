@@ -434,15 +434,15 @@ main :: proc() {
 		gap: f32,
 	}
 	
-	clouds: small_array.Small_Array(10, Cloud);
+	clouds: small_array.Small_Array(MAX_CLOUDS, Cloud);
+	small_array.push_back(&clouds, make_cloud(x = f32(window_w)));
 	
-	{
-		cloud: Cloud;
-		cloud.screen_pos.x = f32(window_w);
-		cloud.screen_pos.y = rand.float32_range(MIN_SKY_LEVEL, MAX_SKY_LEVEL);
-		cloud.gap = rand.float32_range(MIN_CLOUD_GAP, MAX_CLOUD_GAP);
-		
-		small_array.push_back(&clouds, cloud);
+	make_cloud :: proc(x: f32, gen_y := context.random_generator, gen_gap := context.random_generator) -> Cloud {
+		cloud := Cloud {
+			screen_pos = {x, math.round(rand.float32_range(MIN_SKY_LEVEL, MAX_SKY_LEVEL, gen = gen_y))},
+			gap = math.round(rand.float32_range(MIN_CLOUD_GAP, MAX_CLOUD_GAP, gen = gen_gap)),
+		};
+		return cloud;
 	}
 	
 	////////////////////////////////
@@ -699,12 +699,7 @@ main :: proc() {
 				}
 				
 				if try_add_cloud && rand.float32() < CLOUD_FREQUENCY {
-					cloud: Cloud;
-					cloud.screen_pos.x = f32(window_w);
-					cloud.screen_pos.y = rand.float32_range(MIN_SKY_LEVEL, MAX_SKY_LEVEL);
-					cloud.gap = rand.float32_range(MIN_CLOUD_GAP, MAX_CLOUD_GAP);
-					
-					small_array.push_back(&clouds, cloud);
+					small_array.push_back(&clouds, make_cloud(x = f32(window_w)));
 				}
 			}
 			
