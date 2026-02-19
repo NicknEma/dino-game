@@ -461,6 +461,7 @@ main :: proc() {
 	METER_FLASH_ITERATIONS :: 3;
 	
 	Meter :: struct {
+		up_to_date_score: i32,
 		score: i32,
 		digit_count: i32,
 		
@@ -473,15 +474,6 @@ main :: proc() {
 	}
 	
 	meter: Meter;
-	meter.digit_count = METER_DEFAULT_DIGIT_COUNT;
-	meter.high_digit_count = METER_DEFAULT_DIGIT_COUNT;
-	
-	when false {
-		for _ in 0..<meter.digit_count {
-			meter_max_score *= 10;
-			meter_max_score += 9;
-		}
-	}
 	
 	// Attempt info
 	frame_count_since_attempt_start := 0;
@@ -563,6 +555,9 @@ main :: proc() {
 					meter.flash_iterations = 0;
 					meter.flash_timer = 0.0;
 					meter.achievement = false;
+					if meter.high_digit_count < METER_DEFAULT_DIGIT_COUNT {
+						meter.high_digit_count = METER_DEFAULT_DIGIT_COUNT;
+					}
 					
 					trex_distance_ran = 0;
 					trex_run_speed = TREX_INITIAL_RUN_SPEED;
@@ -864,6 +859,7 @@ main :: proc() {
 					}
 					
 					trex_status = .Crashed;
+					meter.score = meter.up_to_date_score;
 					meter.high_score = max(meter.high_score, meter.score);
 				}
 			}
@@ -882,8 +878,9 @@ main :: proc() {
 			
 			// Update high score
 			{
+				score := cast(i32)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+				meter.up_to_date_score = score;
 				if !meter.achievement {
-					score := cast(i32)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
 					digit_count := cast(i32)math.count_digits_of_base(score, 10);
 					
 					if digit_count > meter.digit_count && meter.digit_count == METER_DEFAULT_DIGIT_COUNT {
