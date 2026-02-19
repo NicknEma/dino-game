@@ -985,7 +985,7 @@ main :: proc() {
 			meter := meter_display_value;
 			
 			if meter_should_draw {
-				for digit_index := meter_max_score_units; digit_index > 0; digit_index -= 1 {
+				for digit_index := meter_max_score_units - 1; digit_index > -1; digit_index -= 1 {
 					digit := meter % 10;
 					meter /= 10;
 					
@@ -995,7 +995,7 @@ main :: proc() {
 					};
 					
 					screen_digit_pos := [2]f32 {
-						meter_x + screen_meter_char_w * f32(digit_index-1),
+						meter_x + screen_meter_char_w * f32(digit_index),
 						meter_y
 					};
 					
@@ -1006,11 +1006,13 @@ main :: proc() {
 			high_score_alpha := f32(0.8);
 			high_score_color := raylib.ColorAlpha(raylib.WHITE, high_score_alpha);
 			
-			high_score_offset := meter_x - (f32(meter_max_score_units) * 2.0) * screen_meter_char_w;
+			high_score_offset := meter_x - (f32(meter_max_score_units) * 2.0) * sprite_meter_char_w; // TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
+			
+			raylib.DrawCircleV({high_score_offset, meter_y}, 2, raylib.RED);
 			
 			high_score := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
 			
-			for digit_index := meter_max_score_units; digit_index > 0; digit_index -= 1 {
+			for digit_index := meter_max_score_units - 1; digit_index > -1; digit_index -= 1 {
 				digit := high_score % 10;
 				high_score /= 10;
 				
@@ -1020,7 +1022,7 @@ main :: proc() {
 				};
 				
 				screen_digit_pos := [2]f32 {
-					high_score_offset + screen_meter_char_w * f32(digit_index),
+					high_score_offset + screen_meter_char_w * f32(digit_index + 3),
 					meter_y
 				};
 				
