@@ -409,7 +409,6 @@ main :: proc() {
 	METER_FLASH_DURATION :: 1000 / 4;
 	METER_FLASH_ITERATIONS :: 3;
 	
-	meter_current_distance: f32;
 	meter_max_score: int;
 	meter_high_score: int;
 	meter_achievement: bool;
@@ -975,9 +974,6 @@ main :: proc() {
 			meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter_max_score_units) + 1.0));
 			meter_y := f32(5.0);
 			
-			raylib.DrawCircleV({meter_x, meter_y}, 2, raylib.RED);
-			
-			// meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
 			meter := meter_display_value;
 			
 			if meter_should_draw {
@@ -1003,8 +999,6 @@ main :: proc() {
 			high_score_color := raylib.ColorAlpha(raylib.WHITE, high_score_alpha);
 			
 			high_score_offset := meter_x - (f32(meter_max_score_units) * 2.0) * sprite_meter_char_w; // TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
-			
-			raylib.DrawCircleV({high_score_offset, meter_y}, 2, raylib.RED);
 			
 			high_score := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
 			
