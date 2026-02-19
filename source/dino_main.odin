@@ -1003,21 +1003,23 @@ main :: proc() {
 			
 			high_score := meter_high_score;
 			
-			for digit_index := meter_max_score_units - 1; digit_index > -1; digit_index -= 1 {
-				digit := high_score % 10;
-				high_score /= 10;
-				
-				sprite_digit_rec := raylib.Rectangle {
-					sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
-					sprite_meter_char_w, sprite_meter_char_h
-				};
-				
-				screen_digit_pos := [2]f32 {
-					high_score_offset + screen_meter_char_w * f32(digit_index + 3),
-					meter_y
-				};
-				
-				raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, high_score_color);
+			if high_score > 0 {
+				for digit_index := meter_max_score_units - 1; digit_index > -1; digit_index -= 1 {
+					digit := high_score % 10;
+					high_score /= 10;
+					
+					sprite_digit_rec := raylib.Rectangle {
+						sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
+						sprite_meter_char_w, sprite_meter_char_h
+					};
+					
+					screen_digit_pos := [2]f32 {
+						high_score_offset + screen_meter_char_w * f32(digit_index + 3),
+						meter_y
+					};
+					
+					raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, high_score_color);
+				}
 			}
 		}
 		
