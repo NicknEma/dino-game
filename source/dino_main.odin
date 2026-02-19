@@ -401,6 +401,51 @@ main :: proc() {
 	}
 	
 	////////////////////////////////
+	// Clouds variables
+	
+	MAX_CLOUD_GAP :: 400;
+	MAX_SKY_LEVEL :: 71;
+	MIN_CLOUD_GAP :: 100;
+	MIN_SKY_LEVEL :: 30;
+	
+	CLOUD_FREQUENCY :: 0.5;
+	CLOUD_SPEED :: 0.2;
+	MAX_CLOUDS  :: 6;
+	
+	SPRITE_1X_CLOUD_W :: 46;
+	SPRITE_1X_CLOUD_H :: 14;
+	
+	SCREEN_CLOUD_W :: 46;
+	SCREEN_CLOUD_H :: 14;
+	
+	sprite_cloud_w := f32(SPRITE_1X_CLOUD_W);
+	sprite_cloud_h := f32(SPRITE_1X_CLOUD_H);
+	
+	screen_cloud_w := f32(SCREEN_CLOUD_W);
+	screen_cloud_h := f32(SCREEN_CLOUD_H);
+	
+	if double_resolution {
+		sprite_cloud_w, sprite_cloud_h = 2*sprite_cloud_w, 2*sprite_cloud_h;
+		screen_cloud_w, screen_cloud_h = 2*screen_cloud_w, 2*screen_cloud_h;
+	}
+	
+	Cloud :: struct {
+		screen_pos: [2]f32,
+		gap: f32,
+	}
+	
+	clouds: small_array.Small_Array(10, Cloud);
+	
+	{
+		cloud: Cloud;
+		cloud.screen_pos.x = f32(window_w);
+		cloud.screen_pos.y = rand.float32_range(MIN_SKY_LEVEL, MAX_SKY_LEVEL);
+		cloud.gap = rand.float32_range(MIN_CLOUD_GAP, MAX_CLOUD_GAP);
+		
+		small_array.push_back(&clouds, cloud);
+	}
+	
+	////////////////////////////////
 	// Distance meter variables
 	
 	METER_DEFAULT_DIGIT_COUNT :: 5;
@@ -626,8 +671,42 @@ main :: proc() {
 				}
 			}
 			
-			// update clouds
-			// TODO(ema): Implement
+			// Update clouds
+			{
+				delta := CLOUD_SPEED * TARGET_FPS * dt * trex_run_speed;
+				
+				passed_clouds: small_array.Small_Array(len(clouds.data), int);
+				for cloud_index := 0; cloud_index < small_array.len(clouds); cloud_index += 1 {
+					cloud := small_array.get_ptr(&clouds, cloud_index);
+					cloud.screen_pos.x -= delta;
+					
+					is_visible_or_to_the_right := cloud.screen_pos.x + screen_cloud_w > 0;
+					if !is_visible_or_to_the_right {
+						small_array.append(&passed_clouds, cloud_index);
+					}
+				}
+				
+				ordered_remove_elems(&clouds, small_array.slice(&passed_clouds));
+				
+				try_add_cloud := false;
+				if small_array.len(clouds) > 0 {
+					last := small_array.get(clouds, small_array.len(clouds) - 1);
+					if small_array.space(clouds) > 0 && last.screen_pos.x + screen_cloud_w + last.gap < f32(window_w) {
+						try_add_cloud = true;
+					}
+				} else {
+					try_add_cloud = true;
+				}
+				
+				if try_add_cloud && rand.float32() < CLOUD_FREQUENCY {
+					cloud: Cloud;
+					cloud.screen_pos.x = f32(window_w);
+					cloud.screen_pos.y = rand.float32_range(MIN_SKY_LEVEL, MAX_SKY_LEVEL);
+					cloud.gap = rand.float32_range(MIN_CLOUD_GAP, MAX_CLOUD_GAP);
+					
+					small_array.push_back(&clouds, cloud);
+				}
+			}
 			
 			// TODO(ema): Inline these functions
 			update_obstacles(&obstacle_history, &obstacle_buffer, trex_run_speed, dt, f32(window_w));
@@ -864,6 +943,18 @@ main :: proc() {
 				};
 				
 				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
+			}
+		}
+		
+		// Draw clouds
+		{
+			for cloud in small_array.slice(&clouds) {
+				sprite_rec := raylib.Rectangle {
+					sprite_coordinates.cloud.x, sprite_coordinates.cloud.y,
+					sprite_cloud_w, sprite_cloud_h
+				};
+				
+				raylib.DrawTextureRec(sprite_tex, sprite_rec, cloud.screen_pos, raylib.WHITE);
 			}
 		}
 		
