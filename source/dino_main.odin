@@ -6,6 +6,7 @@ import "base:intrinsics"
 import os "core:os/os2"
 
 import "core:fmt"
+import "core:math"
 import "core:slice"
 import "core:strings"
 import "core:math/rand"
@@ -399,6 +400,30 @@ main :: proc() {
 		}
 	}
 	
+	////////////////////////////////
+	// Distance meter variables
+	
+	METER_MAX_DISTANCE_UNITS :: 5;
+	METER_ACHIEVEMENT_DISTANCE :: 100;
+	METER_COEFFICIENT :: 0.025;
+	METER_FLASH_DURATION :: 1000 / 4;
+	METER_FLASH_ITERATIONS :: 3;
+	
+	meter_current_distance: f32;
+	meter_max_score: int;
+	meter_high_score: int;
+	meter_digits: []int;
+	meter_achievement: bool;
+	meter_default_string: [dynamic]byte;
+	meter_flash_timer: f32;
+	meter_flash_iterations: int;
+	meter_max_score_units: int = METER_MAX_DISTANCE_UNITS;
+	
+	for digit in 0..<meter_max_score_units {
+		meter_max_score *= 10;
+		meter_max_score += 9;
+	}
+	
 	// Attempt info
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
@@ -750,7 +775,7 @@ main :: proc() {
 		if trex_status != .Crashed && trex_status != .Waiting {
 			// NOTE(ema): Don't do this before collision checking, because *technically*
 			// you haven't run the distance if you crashed
-			trex_distance_ran += trex_run_speed * dt / MS_PER_FRAME;
+			trex_distance_ran += trex_run_speed * dt * 1000 / MS_PER_FRAME;
 			if trex_run_speed < TREX_MAX_SPEED {
 				trex_run_speed += TREX_X_ACCELERATION;
 			}
@@ -889,6 +914,48 @@ main :: proc() {
 			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, {trex_world_x, trex_world_y}, raylib.WHITE);
 		}
 		
+		// Draw score
+		{
+			SPRITE_1X_METER_CHAR_W :: 10;
+			SPRITE_1X_METER_CHAR_H :: 13;
+			
+			SCREEN_METER_CHAR_W :: 10 + 1; // NOTE(ema): Wider than the sprite
+			SCREEN_METER_CHAR_H :: 13;
+			
+			sprite_meter_char_w := f32(SPRITE_1X_METER_CHAR_W);
+			sprite_meter_char_h := f32(SPRITE_1X_METER_CHAR_H);
+			
+			screen_meter_char_w := f32(SCREEN_METER_CHAR_W);
+			screen_meter_char_h := f32(SCREEN_METER_CHAR_H);
+			
+			if double_resolution {
+				sprite_meter_char_w, sprite_meter_char_h = 2.0*sprite_meter_char_w, 2.0*sprite_meter_char_h;
+				screen_meter_char_w, screen_meter_char_h = 2.0*screen_meter_char_w, 2.0*screen_meter_char_h;
+			}
+			
+			meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter_max_score_units) + 1.0));
+			meter_y := f32(5.0);
+			
+			meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+			
+			for digit_index := 5; digit_index > 0; digit_index -= 1 {
+				digit := meter % 10;
+				meter /= 10;
+				
+				sprite_digit_rec := raylib.Rectangle {
+					sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
+					sprite_meter_char_w, sprite_meter_char_h
+				};
+				
+				screen_digit_pos := [2]f32 {
+					meter_x + screen_meter_char_w * f32(digit_index),
+					meter_y
+				};
+				
+				raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, raylib.WHITE);
+			}
+		}
+		
 		// Draw game over panel
 		if trex_status == .Crashed {
 			// Draw text
@@ -1018,6 +1085,8 @@ main :: proc() {
 					fmt.tprintf("%v: %v", name_of(MS_PER_FRAME), MS_PER_FRAME),
 					fmt.tprintf("%v: %v", name_of(trex_status), trex_status),
 					fmt.tprintf("%v: %v", name_of(trex_distance_ran), trex_distance_ran),
+					fmt.tprintf("%v: %v", name_of(math.ceil(trex_distance_ran)), math.ceil(trex_distance_ran)),
+					fmt.tprintf("%v: %v", name_of(math.round(METER_COEFFICIENT*math.ceil(trex_distance_ran))), math.round(METER_COEFFICIENT*math.ceil(trex_distance_ran))),
 					fmt.tprintf("%v: %v", name_of(trex_run_speed), trex_run_speed),
 				};
 				
