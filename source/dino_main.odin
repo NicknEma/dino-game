@@ -958,7 +958,7 @@ main :: proc() {
 		}
 		
 		// Draw score
-		if meter_should_draw {
+		{
 			SPRITE_1X_METER_CHAR_W :: 10;
 			SPRITE_1X_METER_CHAR_H :: 13;
 			
@@ -982,21 +982,23 @@ main :: proc() {
 			// meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
 			meter := meter_display_value;
 			
-			for digit_index := meter_max_score_units; digit_index > 0; digit_index -= 1 {
-				digit := meter % 10;
-				meter /= 10;
-				
-				sprite_digit_rec := raylib.Rectangle {
-					sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
-					sprite_meter_char_w, sprite_meter_char_h
-				};
-				
-				screen_digit_pos := [2]f32 {
-					meter_x + screen_meter_char_w * f32(digit_index),
-					meter_y
-				};
-				
-				raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, raylib.WHITE);
+			if meter_should_draw {
+				for digit_index := meter_max_score_units; digit_index > 0; digit_index -= 1 {
+					digit := meter % 10;
+					meter /= 10;
+					
+					sprite_digit_rec := raylib.Rectangle {
+						sprite_coordinates.text.x + sprite_meter_char_w * f32(digit), sprite_coordinates.text.y,
+						sprite_meter_char_w, sprite_meter_char_h
+					};
+					
+					screen_digit_pos := [2]f32 {
+						meter_x + screen_meter_char_w * f32(digit_index),
+						meter_y
+					};
+					
+					raylib.DrawTextureRec(sprite_tex, sprite_digit_rec, screen_digit_pos, raylib.WHITE);
+				}
 			}
 		}
 		
