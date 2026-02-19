@@ -429,6 +429,11 @@ main :: proc() {
 		screen_cloud_w, screen_cloud_h = 2*screen_cloud_w, 2*screen_cloud_h;
 	}
 	
+	sprite_cloud_rec := raylib.Rectangle {
+		sprite_coordinates.cloud.x, sprite_coordinates.cloud.y,
+		sprite_cloud_w, sprite_cloud_h
+	};
+	
 	Cloud :: struct {
 		screen_pos: [2]f32,
 		gap: f32,
@@ -942,15 +947,8 @@ main :: proc() {
 		}
 		
 		// Draw clouds
-		{
-			for cloud in small_array.slice(&clouds) {
-				sprite_rec := raylib.Rectangle {
-					sprite_coordinates.cloud.x, sprite_coordinates.cloud.y,
-					sprite_cloud_w, sprite_cloud_h
-				};
-				
-				raylib.DrawTextureRec(sprite_tex, sprite_rec, cloud.screen_pos, raylib.WHITE);
-			}
+		for cloud in small_array.slice(&clouds) {
+			raylib.DrawTextureRec(sprite_tex, sprite_cloud_rec, cloud.screen_pos, raylib.WHITE);
 		}
 		
 		// Draw obstacles
