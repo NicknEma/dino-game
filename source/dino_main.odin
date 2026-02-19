@@ -885,7 +885,6 @@ main :: proc() {
 					
 					if digit_count > meter.digit_count && meter.digit_count == METER_DEFAULT_DIGIT_COUNT {
 						meter.digit_count += 1;
-						// meter_max_score = meter_max_score * 10 + 9;
 					}
 					
 					if score > 0 && score % METER_ACHIEVEMENT_DISTANCE == 0 {
