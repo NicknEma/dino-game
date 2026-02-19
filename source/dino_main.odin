@@ -788,6 +788,10 @@ main :: proc() {
 			{
 				if !meter_achievement {
 					meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+					if meter > meter_max_score && meter_max_score_units == METER_MAX_DISTANCE_UNITS {
+						meter_max_score_units += 1;
+						meter_max_score = meter_max_score * 10 + 9;
+					}
 					if meter > 0 {
 						if meter % METER_ACHIEVEMENT_DISTANCE == 0 {
 							meter_achievement = true;
@@ -978,7 +982,7 @@ main :: proc() {
 			// meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
 			meter := meter_display_value;
 			
-			for digit_index := 5; digit_index > 0; digit_index -= 1 {
+			for digit_index := meter_max_score_units; digit_index > 0; digit_index -= 1 {
 				digit := meter % 10;
 				meter /= 10;
 				
