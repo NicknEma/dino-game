@@ -979,6 +979,8 @@ main :: proc() {
 			meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter_max_score_units) + 1.0));
 			meter_y := f32(5.0);
 			
+			raylib.DrawCircleV({meter_x, meter_y}, 2, raylib.RED);
+			
 			// meter := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
 			meter := meter_display_value;
 			
@@ -993,7 +995,7 @@ main :: proc() {
 					};
 					
 					screen_digit_pos := [2]f32 {
-						meter_x + screen_meter_char_w * f32(digit_index),
+						meter_x + screen_meter_char_w * f32(digit_index-1),
 						meter_y
 					};
 					
