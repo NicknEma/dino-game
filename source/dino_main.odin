@@ -766,6 +766,7 @@ main :: proc() {
 					}
 					
 					trex_status = .Crashed;
+					meter_high_score = max(meter_high_score, meter_display_value);
 				}
 			}
 		}
@@ -1000,7 +1001,7 @@ main :: proc() {
 			
 			high_score_offset := meter_x - (f32(meter_max_score_units) * 2.0) * sprite_meter_char_w; // TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
 			
-			high_score := cast(int)math.round(METER_COEFFICIENT * math.ceil(trex_distance_ran));
+			high_score := meter_high_score;
 			
 			for digit_index := meter_max_score_units - 1; digit_index > -1; digit_index -= 1 {
 				digit := high_score % 10;
