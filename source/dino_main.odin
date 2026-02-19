@@ -772,6 +772,8 @@ main :: proc() {
 			}
 		}
 		
+		meter_should_draw := true;
+		
 		// Simulate trex run & animate
 		if trex_status != .Crashed && trex_status != .Waiting {
 			// NOTE(ema): Don't do this before collision checking, because *technically*
@@ -794,6 +796,22 @@ main :: proc() {
 								raylib.PlaySound(sound_reached); // TODO(ema): Play on different channel?
 							}
 						}
+					}
+				} else {
+					if meter_flash_iterations <= METER_FLASH_ITERATIONS {
+						meter_flash_timer += dt * 1000;
+						if meter_flash_timer < METER_FLASH_DURATION {
+							meter_should_draw = false;
+						} else {
+							if meter_flash_timer > METER_FLASH_DURATION * 2 {
+								meter_flash_timer = 0;
+								meter_flash_iterations += 1;
+							}
+						}
+					} else {
+						meter_achievement = false;
+						meter_flash_iterations = 0;
+						meter_flash_timer = 0;
 					}
 				}
 			}
@@ -932,7 +950,7 @@ main :: proc() {
 		}
 		
 		// Draw score
-		{
+		if meter_should_draw {
 			SPRITE_1X_METER_CHAR_W :: 10;
 			SPRITE_1X_METER_CHAR_H :: 13;
 			
