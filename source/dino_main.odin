@@ -639,8 +639,7 @@ main :: proc() {
 						trex.hitboxes = trex_hitboxes_running[:];
 						
 						// TODO(ema): Rename this variable
-						// TODO(ema): Review MS_PER_FRAME
-						z := dt * 1000.0 / MS_PER_FRAME;
+						z := dt * TARGET_FPS;
 						
 						if raylib.IsKeyReleased(raylib.KeyboardKey.UP) {
 							if trex.reached_min_height && trex.jump_velocity < TREX_DROP_VELOCITY {
@@ -902,7 +901,7 @@ main :: proc() {
 		if trex.status != .Crashed && trex.status != .Waiting {
 			// NOTE(ema): Don't do this before collision checking, because *technically*
 			// you haven't run the distance if you crashed
-			trex.distance_ran += trex.run_speed * dt * 1000 / MS_PER_FRAME; // TODO(ema): Review MS_PER_FRAME
+			trex.distance_ran += trex.run_speed * dt * TARGET_FPS;
 			if trex.run_speed < TREX_MAX_RUN_SPEED {
 				trex.run_speed += TREX_RUN_ACCELERATION;
 			}
