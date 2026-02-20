@@ -554,17 +554,21 @@ main :: proc() {
 		
 		// Simulate trex
 		trex_prev_status := trex.status;
-		{
+		for trex_prevent_jump := false; true; {
+			trex_status_changed := false;
+			
 			if trex.status == .Waiting || trex.status == .Crashed {
-				should_start := false;
 				
+				should_start := false;
 				if trex.status == .Waiting {
 					if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
 						should_start = true;
+						trex_prevent_jump = true;
 					}
 				} else {
 					if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
 						should_start = true;
+						trex_prevent_jump = true;
 						if !mute_sfx {
 							raylib.PlaySound(sound_press);
 						}
@@ -573,6 +577,8 @@ main :: proc() {
 				
 				if should_start {
 					trex.status = .Running;
+					trex_status_changed = true;
+					
 					attempt_count += 1;
 					
 					meter.score = 0;
@@ -612,14 +618,16 @@ main :: proc() {
 						
 						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
 							trex.status = .Ducking;
+							trex_status_changed = true;
 						}
 						
-						if raylib.IsKeyPressed(raylib.KeyboardKey.UP) && trex.status != .Ducking {
+						if raylib.IsKeyPressed(raylib.KeyboardKey.UP) && trex.status != .Ducking && !trex_prevent_jump {
 							if !mute_sfx {
 								raylib.PlaySound(sound_press);
 							}
 							
 							trex.status = .Jumping;
+							trex_status_changed = true;
 							
 							trex.jump_velocity = TREX_START_JUMP_VELOCITY - (trex.run_speed / 10.0);
 							trex.reached_min_height = false;
@@ -632,6 +640,7 @@ main :: proc() {
 						
 						if raylib.IsKeyUp(raylib.KeyboardKey.DOWN) {
 							trex.status = .Running;
+							trex_status_changed = true;
 						}
 					}
 					
@@ -674,6 +683,7 @@ main :: proc() {
 							trex.screen_pos.y = trex_ground_y_normal;
 							trex.jump_velocity = 0;
 							trex.status = .Running;
+							trex_status_changed = true;
 							trex.speed_drop = false;
 							
 							// TODO(ema): Maybe add: if UP pressed, keep status = jumping, else set status = running
@@ -686,6 +696,10 @@ main :: proc() {
 																		 context.temp_allocator));
 					}
 				}
+			}
+			
+			if !trex_status_changed {
+				break;
 			}
 		}
 		
