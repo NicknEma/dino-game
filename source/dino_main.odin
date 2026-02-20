@@ -1,5 +1,9 @@
 package dino
 
+// TODO(ema): Review all casts
+// TODO(ema): Review all uses of framerate
+// TODO(ema): Review all drawing sites for possible math.round() calls
+
 import "base:runtime"
 import "base:intrinsics"
 
@@ -29,6 +33,9 @@ BG_COLOR_DAY :: 0xF7F7F7FF
 OFFLINE_SOUND_PRESS   :: #load("../assets/offline_sound_press.ogg")
 OFFLINE_SOUND_HIT     :: #load("../assets/offline_sound_hit.ogg")
 OFFLINE_SOUND_REACHED :: #load("../assets/offline_sound_reached.ogg")
+
+////////////////////////////////
+// Sprites
 
 SPRITE_1X :: #load("../assets/offline-sprite-1x.png")
 SPRITE_2X :: #load("../assets/offline-sprite-2x.png")
@@ -67,9 +74,51 @@ Sprite_Coordinates :: struct {
 	text: [2]f32
 }
 
+sprite_coordinates: Sprite_Coordinates;
+sprite_bytes: []u8;
+
+////////////////////////////////
+// Trex constants & types
+
+// TODO(ema): Better names for: drop velocity, drop coef (?); speed drop
+// TODO(ema): Implement CLEAR_TIME
+
+TREX_SCREEN_POSITION_X :: 50; // TODO(ema): This should double for graphics but stay the same for simulation
+
+TREX_INITIAL_RUN_SPEED :: 6;
+TREX_MAX_RUN_SPEED     :: 13;
+TREX_RUN_ACCELERATION  :: 0.001;
+
+TREX_MAX_JUMP_HEIGHT :: 30;
+TREX_MIN_JUMP_HEIGHT :: 30;
+TREX_DROP_VELOCITY :: -5;
+TREX_GRAVITY :: 0.6;
+TREX_SPEED_DROP_COEFFICIENT :: 3;
+TREX_START_JUMP_VELOCITY :: -10;
+
+TREX_WAITING_ANIM_BLINK_TIMING :: 7000;
+
 Trex_Status :: enum {
 	Waiting, Running, Ducking, Jumping, Crashed
-};
+}
+
+Trex :: struct {
+	status: Trex_Status,
+	hitboxes: []raylib.Rectangle, // TODO(ema): Is it necessary? Can be inferred at any time from the status
+	screen_pos: [2]f32,
+	
+	distance_ran: f32,
+	run_speed: f32,
+	
+	jump_velocity: f32,
+	reached_min_height: bool,
+	speed_drop: bool,
+	
+	waiting_anim_blink_delay: f32,
+	waiting_anim_start_time: f32,
+	anim_frame_index: i32,
+	anim_timer: f32,
+}
 
 @(rodata)
 trex_status_anim_frames_per_ms := [Trex_Status]int {
@@ -80,14 +129,21 @@ trex_status_anim_frames_per_ms := [Trex_Status]int {
 	.Ducking =  8,
 }
 
+SPRITE_1X_TREX_WIDTH_NORMAL  ::  44
+SPRITE_1X_TREX_HEIGHT_NORMAL ::  47
+SPRITE_1X_TREX_WIDTH_DUCK    ::  59
+SPRITE_1X_TREX_HEIGHT_DUCK   ::  25
+SPRITE_1X_TREX_WIDTH_TOTAL   :: 262
+
+// NOTE(ema): From the top-left corner of the entity sub-sprite
 SPRITE_1X_TREX_RECTS :: [Trex_Status][]raylib.Rectangle {
 	.Waiting = {
 		{  0,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
-		{ 44,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}, // TODO(ema): This was 40 before, where did it come from?
+		{ 44,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
 	},
 	.Running = {
 		{ 88,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
-		{132,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
+		{132,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
 	},
 	.Ducking = {
 		{262, 17, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_DUCK},
@@ -101,38 +157,14 @@ SPRITE_1X_TREX_RECTS :: [Trex_Status][]raylib.Rectangle {
 	},
 }
 
-sprite_trex_rects: [Trex_Status][]raylib.Rectangle;
-
-when false {
-	// NOTE(ema): From the top-left corner of the entity sub-sprite
-	Sprite_Rects :: struct {
-		trex_waiting: [2]raylib.Rectangle,
-		trex_running: [2]raylib.Rectangle,
-		trex_ducking: [2]raylib.Rectangle,
-		trex_jumping: [1]raylib.Rectangle,
-		trex_crashed: [1]raylib.Rectangle,
-	}
-}
-
-SPRITE_1X_TREX_WIDTH_NORMAL  ::  44
-SPRITE_1X_TREX_HEIGHT_NORMAL ::  47
-SPRITE_1X_TREX_WIDTH_DUCK    ::  59
-SPRITE_1X_TREX_HEIGHT_DUCK   ::  25
-SPRITE_1X_TREX_WIDTH_TOTAL   :: 262
-
-trex_w_normal: f32 // TODO(ema): Use these to potentially stretch the texture when drawing
-trex_h_normal: f32
-trex_w_duck: f32
-trex_h_duck: f32
-
 @(rodata)
-trex_collision_boxes_running := [?]raylib.Rectangle {
+trex_hitboxes_running := [?]raylib.Rectangle {
 	{22,  0, 17, 16}, { 1, 18, 30,  9}, {10, 35, 14,  8},
 	{ 1, 24, 29,  5}, { 5, 30, 21,  4}, { 9, 34, 15,  4}
 }
 
 @(rodata)
-trex_collision_boxes_ducking := [?]raylib.Rectangle {
+trex_hitboxes_ducking := [?]raylib.Rectangle {
 	{ 1, 18, 55, 25}
 }
 
@@ -156,9 +188,6 @@ screen_ground_x := f32(SCREEN_GROUND_X);
 screen_ground_y := f32(SCREEN_GROUND_Y);
 screen_ground_w := f32(SCREEN_GROUND_W);
 screen_ground_h := f32(SCREEN_GROUND_H);
-
-sprite_coordinates: Sprite_Coordinates;
-sprite_bytes: []u8;
 
 ////////////////////////////////
 // Obstacle constants & types
@@ -227,7 +256,7 @@ OBSTACLE_TEMPLATES :: [Obstacle_Tag]Obstacle_Template {
 OBSTACLE_SPRITE_RECTS :: [Obstacle_Tag]raylib.Rectangle {
 	.Cactus_Small = {0, 0, 17, 35},
 	.Cactus_Large = {0, 0, 25, 50},
-	.Pterodactyl  = {0, 0, 46,  40},
+	.Pterodactyl  = {0, 0, 46, 40},
 }
 
 obstacle_sprite_rects: [Obstacle_Tag]raylib.Rectangle;
@@ -291,12 +320,8 @@ main :: proc() {
 	
 	window_w, window_h = DEFAULT_WINDOW_W, DEFAULT_WINDOW_H;
 	sprite_coordinates = SPRITE_1X_COORDINATES;
-	sprite_trex_rects = SPRITE_1X_TREX_RECTS;
+	sprite_trex_rects := SPRITE_1X_TREX_RECTS;
 	sprite_bytes = SPRITE_1X;
-	trex_w_normal = SPRITE_1X_TREX_WIDTH_NORMAL;
-	trex_h_normal = SPRITE_1X_TREX_HEIGHT_NORMAL;
-	trex_w_duck = SPRITE_1X_TREX_WIDTH_DUCK;
-	trex_h_duck = SPRITE_1X_TREX_HEIGHT_DUCK;
 	if double_resolution {
 		window_w, window_h = 2*DEFAULT_WINDOW_W, 2*DEFAULT_WINDOW_H;
 		sprite_coordinates = SPRITE_2X_COORDINATES;
@@ -304,10 +329,6 @@ main :: proc() {
 			for &rec in status do rec = double_rect(rec);
 		}
 		sprite_bytes = SPRITE_2X;
-		trex_w_normal *= 2;
-		trex_h_normal *= 2;
-		trex_w_duck *= 2;
-		trex_h_duck *= 2;
 		
 		sprite_ground_x, sprite_ground_y = SPRITE_2X_COORDINATES.horizon.x, SPRITE_2X_COORDINATES.horizon.y;
 		sprite_ground_w, sprite_ground_h = sprite_ground_w * 2, sprite_ground_h * 2;
@@ -338,26 +359,6 @@ main :: proc() {
 	////////////////////////////////
 	// Trex variables
 	
-	// TODO(ema): Better names for: drop velocity, x-accel (run accel), max speed (max run speed),
-	// drop coef (?); speed drop
-	
-	// TODO(ema): Implement CLEAR_TIME
-	
-	TREX_SCREEN_POSITION_X :: 50;
-	
-	TREX_INITIAL_RUN_SPEED :: 6;
-	TREX_MAX_RUN_SPEED     :: 13;
-	TREX_RUN_ACCELERATION  :: 0.001;
-	
-	TREX_MAX_JUMP_HEIGHT :: 30;
-	TREX_MIN_JUMP_HEIGHT :: 30;
-	TREX_DROP_VELOCITY :: -5;
-	TREX_GRAVITY :: 0.6;
-	TREX_SPEED_DROP_COEFFICIENT :: 3;
-	TREX_START_JUMP_VELOCITY :: -10;
-	
-	TREX_WAITING_ANIM_BLINK_TIMING :: 7000;
-	
 	trex_screen_position_x := f32(TREX_SCREEN_POSITION_X);
 	if double_resolution {
 		trex_screen_position_x *= 2;
@@ -365,24 +366,6 @@ main :: proc() {
 	
 	trex_ground_y_normal := f32(window_h - bottom_pad) - trex_h_normal;
 	trex_ground_y_duck := f32(window_h - bottom_pad) - trex_h_duck;
-	
-	Trex :: struct {
-		status: Trex_Status,
-		hitboxes: []raylib.Rectangle, // TODO(ema): Is it necessary? Can be inferred at any time from the status
-		screen_pos: [2]f32,
-		
-		distance_ran: f32,
-		run_speed: f32,
-		
-		jump_velocity: f32,
-		reached_min_height: bool,
-		speed_drop: bool,
-		
-		waiting_anim_blink_delay: f32,
-		waiting_anim_start_time: f32,
-		anim_frame_index: i32,
-		anim_timer: f32,
-	}
 	
 	trex: Trex;
 	trex.status = .Waiting;
@@ -431,9 +414,9 @@ main :: proc() {
 	CLOUD_SPEED :: 0.2;
 	MAX_CLOUDS  :: 6;
 	
+	// TODO(ema): Width and height will always be the same for sprite and screen
 	SPRITE_1X_CLOUD_W :: 46;
 	SPRITE_1X_CLOUD_H :: 14;
-	
 	SCREEN_CLOUD_W :: 46;
 	SCREEN_CLOUD_H :: 14;
 	
@@ -1007,41 +990,14 @@ main :: proc() {
 			}
 			for o in small_array.slice(&obstacle_buffer) {
 				pos := o.world_position;
-				// rec := o.sprite_rec;
 				
-				when false {
-					rec: raylib.Rectangle;
-					switch o.tag {
-						case .Cactus_Small: {
-							rec.x = SPRITE_1X_COORDINATES.cactus_small.x;
-							rec.y = SPRITE_1X_COORDINATES.cactus_small.y;
-							rec.width = CACTUS_SMALL_SPRITE_WIDTH;
-							rec.height = CACTUS_SMALL_SPRITE_HEIGHT;
-						}
-						
-						case .Cactus_Large: {
-							rec.x = SPRITE_1X_COORDINATES.cactus_large.x;
-							rec.y = SPRITE_1X_COORDINATES.cactus_large.y;
-							rec.width = CACTUS_LARGE_SPRITE_WIDTH;
-							rec.height = CACTUS_LARGE_SPRITE_HEIGHT;
-						}
-						
-						case .Pterodactyl: {
-							rec.x = SPRITE_1X_COORDINATES.pterodactyl.x;
-							rec.y = SPRITE_1X_COORDINATES.pterodactyl.y;
-							rec.width = PTERODACTYL_SPRITE_WIDTH;
-							rec.height = PTERODACTYL_SPRITE_HEIGHT;
-						}
-					}
-				} else {
-					coords: [2]f32; // TODO(ema): See if we can avoid this switch
-					switch o.tag {
-						case .Cactus_Small: coords = sprite_coordinates.cactus_small;
-						case .Cactus_Large: coords = sprite_coordinates.cactus_large;
-						case .Pterodactyl: coords = sprite_coordinates.pterodactyl;
-					}
-					rec := shift_rect(obstacle_sprite_rects[o.tag], coords);
+				coords: [2]f32; // TODO(ema): See if we can avoid this switch
+				switch o.tag {
+					case .Cactus_Small: coords = sprite_coordinates.cactus_small;
+					case .Cactus_Large: coords = sprite_coordinates.cactus_large;
+					case .Pterodactyl: coords = sprite_coordinates.pterodactyl;
 				}
+				rec := shift_rect(obstacle_sprite_rects[o.tag], coords);
 				
 				// Here we have to map the length to the offset like this:
 				//  1 -> 0 * width
@@ -1070,6 +1026,7 @@ main :: proc() {
 		
 		// Draw score
 		{
+			// TODO(ema): Width and height will always be the same for sprite and screen
 			SPRITE_1X_METER_CHAR_W :: 10;
 			SPRITE_1X_METER_CHAR_H :: 13;
 			
@@ -1150,6 +1107,7 @@ main :: proc() {
 			{
 				SPRITE_1X_TEXT_Y ::  13;
 				
+				// TODO(ema): Width and height will always be the same for sprite and screen
 				SPRITE_1X_TEXT_W :: 191;
 				SPRITE_1X_TEXT_H ::  11;
 				
@@ -1185,6 +1143,7 @@ main :: proc() {
 			
 			// Draw restart icon
 			{
+				// TODO(ema): Width and height will always be the same for sprite and screen
 				SPRITE_1X_RESTART_ICON_W :: 36;
 				SPRITE_1X_RESTART_ICON_H :: 32;
 				
