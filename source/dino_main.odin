@@ -259,7 +259,12 @@ OBSTACLE_SPRITE_RECTS :: [Obstacle_Tag]raylib.Rectangle {
 	.Pterodactyl  = {0, 0, 46, 40},
 }
 
-obstacle_sprite_rects: [Obstacle_Tag]raylib.Rectangle;
+// TODO(ema): This is essentially repeated information, just in a more convenient form. Remove duplicate
+OBSTACLE_SPRITE_OFFSETS :: [Obstacle_Tag][2]f32 {
+	.Cactus_Small = SPRITE_COORDINATES.cactus_small,
+	.Cactus_Large = SPRITE_COORDINATES.cactus_large,
+	.Pterodactyl  = SPRITE_COORDINATES.pterodactyl,
+}
 
 Obstacle :: struct {
 	tag: Obstacle_Tag,
@@ -1000,17 +1005,13 @@ main :: proc() {
 		
 		// Draw obstacles
 		{
-			obstacle_sprite_rects = OBSTACLE_SPRITE_RECTS;
+			obstacle_sprite_rects := OBSTACLE_SPRITE_RECTS;
 			for o in small_array.slice(&obstacle_buffer) {
-				pos := o.world_position;
+				offsets := OBSTACLE_SPRITE_OFFSETS;
+				offset  := offsets[o.tag];
 				
-				coords: [2]f32; // TODO(ema): See if we can avoid this switch
-				switch o.tag {
-					case .Cactus_Small: coords = SPRITE_COORDINATES.cactus_small;
-					case .Cactus_Large: coords = SPRITE_COORDINATES.cactus_large;
-					case .Pterodactyl:  coords = SPRITE_COORDINATES.pterodactyl;
-				}
-				rec := shift_rect(obstacle_sprite_rects[o.tag], coords);
+				rec := shift_rect(obstacle_sprite_rects[o.tag], offset);
+				pos := o.world_position;
 				
 				// Here we have to map the length to the offset like this:
 				//  1 -> 0 * width
