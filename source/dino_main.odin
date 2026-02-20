@@ -283,6 +283,14 @@ when ODIN_DEBUG {
 }
 
 ////////////////////////////////
+// Score text constants
+
+METER_CHAR_W :: 10;
+METER_CHAR_H :: 13;
+
+METER_CHAR_SPACE :: 1; // NOTE(ema): Space between chars on screen
+
+////////////////////////////////
 // Game over text constants
 
 GAME_OVER_TEXT_Y_OFFSET :: 13; // NOTE(ema): Offset from the start of the text (numbers)
@@ -1035,24 +1043,6 @@ main :: proc() {
 		
 		// Draw score
 		{
-			// TODO(ema): Width and height will always be the same for sprite and screen
-			SPRITE_1X_METER_CHAR_W :: 10;
-			SPRITE_1X_METER_CHAR_H :: 13;
-			
-			SCREEN_METER_CHAR_W :: 10 + 1; // NOTE(ema): Wider than the sprite
-			SCREEN_METER_CHAR_H :: 13;
-			
-			sprite_meter_char_w := f32(SPRITE_1X_METER_CHAR_W);
-			sprite_meter_char_h := f32(SPRITE_1X_METER_CHAR_H);
-			
-			screen_meter_char_w := f32(SCREEN_METER_CHAR_W);
-			screen_meter_char_h := f32(SCREEN_METER_CHAR_H);
-			
-			if double_resolution {
-				sprite_meter_char_w, sprite_meter_char_h = 2.0*sprite_meter_char_w, 2.0*sprite_meter_char_h;
-				screen_meter_char_w, screen_meter_char_h = 2.0*screen_meter_char_w, 2.0*screen_meter_char_h;
-			}
-			
 			draw_meter :: proc(score: i32, digit_count: i32, prefix_indices: []i32, sprite_tex: raylib.Texture, sprite_base_rec: raylib.Rectangle,
 							   screen_base_pos: [2]f32, sprite_w: f32, screen_w: f32, color: raylib.Color) {
 				score := score;
@@ -1071,26 +1061,22 @@ main :: proc() {
 				}
 			}
 			
-			sprite_digit_base_rec := raylib.Rectangle {
+			digit_base_rec := raylib.Rectangle {
 				sprite_coordinates.text.x, sprite_coordinates.text.y,
-				sprite_meter_char_w, sprite_meter_char_h
+				METER_CHAR_W, METER_CHAR_H
 			};
 			
-			score_meter_x := f32(WINDOW_W) - (screen_meter_char_w * (f32(meter.digit_count) + 1.0));
-			score_meter_y := f32(5.0);
+			digit_base_pos := [2]f32 {
+				WINDOW_W - ((METER_CHAR_W + METER_CHAR_SPACE) * (f32(meter.digit_count) + 1.0)),
+				5.0
+			};
 			
 			if meter_should_draw {
-				screen_digit_base_pos := [2]f32 {
-					score_meter_x, score_meter_y
-				};
-				
-				draw_meter(meter.score, meter.digit_count, nil, sprite_tex, sprite_digit_base_rec, screen_digit_base_pos,
-						   sprite_meter_char_w, screen_meter_char_w, raylib.WHITE);
+				draw_meter(meter.score, meter.digit_count, nil, sprite_tex, digit_base_rec, digit_base_pos,
+						   METER_CHAR_W, METER_CHAR_W + METER_CHAR_SPACE, raylib.WHITE);
 			}
 			
-			// TODO(ema): Why sprite_* and not screen_*? Maybe change this to screen_* and subtract 1 so it looks the same
-			high_score_meter_x := score_meter_x - (f32(meter.digit_count) * 2.0) * sprite_meter_char_w;
-			high_score_meter_y := score_meter_y;
+			digit_base_pos.x -= (f32(meter.digit_count) * 2.0) * (METER_CHAR_W + METER_CHAR_SPACE);
 			
 			if meter.high_score > 0 {
 				high_score_alpha := f32(0.8);
@@ -1101,12 +1087,8 @@ main :: proc() {
 				// that aren't digits (10 for H, 11 for I, 12 for empty space)
 				@(static, rodata) HIGH_SCORE_PREFIX_INDICES := [?]i32 {10, 11, 12};
 				
-				screen_digit_base_pos := [2]f32 {
-					high_score_meter_x, high_score_meter_y
-				};
-				
-				draw_meter(meter.high_score, meter.high_digit_count, HIGH_SCORE_PREFIX_INDICES[:], sprite_tex, sprite_digit_base_rec, screen_digit_base_pos,
-						   sprite_meter_char_w, screen_meter_char_w, high_score_color);
+				draw_meter(meter.high_score, meter.high_digit_count, HIGH_SCORE_PREFIX_INDICES[:], sprite_tex, digit_base_rec, digit_base_pos,
+						   METER_CHAR_W, METER_CHAR_W + METER_CHAR_SPACE, high_score_color);
 			}
 		}
 		
