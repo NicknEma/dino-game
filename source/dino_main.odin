@@ -517,7 +517,7 @@ main :: proc() {
 			Obstacle_Buffer
 		}
 		
-		debug_draw_flags := bit_set[Debug_Draw_Flag] { .Hotkeys, .Hitboxes, .Mute_Sfx };
+		debug_draw_flags := bit_set[Debug_Draw_Flag] { .Hotkeys, .Mute_Sfx };
 		mute_sfx = true;
 	}
 	
