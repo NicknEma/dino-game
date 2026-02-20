@@ -25,6 +25,8 @@ MS_PER_FRAME :: 1000 / TARGET_FPS
 WINDOW_W :: 600
 WINDOW_H :: 150
 
+BOTTOM_PAD :: 10;
+
 BG_COLOR_DAY :: 0xF7F7F7FF
 
 OFFLINE_SOUND_PRESS   :: #load("../assets/offline_sound_press.ogg")
@@ -388,8 +390,8 @@ main :: proc() {
 	trex_h_normal := f32(SPRITE_1X_TREX_HEIGHT_NORMAL);
 	trex_h_duck := f32(SPRITE_1X_TREX_HEIGHT_DUCK);
 	
-	trex_ground_y_normal := f32(WINDOW_H - bottom_pad) - trex_h_normal;
-	trex_ground_y_duck := f32(WINDOW_H - bottom_pad) - trex_h_duck;
+	trex_ground_y_normal := f32(WINDOW_H - BOTTOM_PAD) - trex_h_normal;
+	trex_ground_y_duck := f32(WINDOW_H - BOTTOM_PAD) - trex_h_duck;
 	
 	trex: Trex;
 	trex.status = .Waiting;
