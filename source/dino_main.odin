@@ -1135,8 +1135,8 @@ main :: proc() {
 				}
 				
 				restart_icon_pos := [2]f32 {
-					f32(WINDOW_W) / 2.0 - RESTART_ICON_W / 2.0,
-					f32(WINDOW_H) / 2.0
+					math.round(f32(WINDOW_W / 2.0 - RESTART_ICON_W / 2.0)),
+					math.round(f32(WINDOW_H / 2.0))
 				}
 				
 				raylib.DrawTextureRec(sprite_tex, restart_icon_rec, restart_icon_pos, raylib.WHITE);
