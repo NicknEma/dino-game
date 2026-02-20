@@ -163,9 +163,12 @@ trex_hitboxes_running := [?]raylib.Rectangle {
 	{ 1, 24, 29,  5}, { 5, 30, 21,  4}, { 9, 34, 15,  4}
 }
 
+// NOTE(ema): The original hitbox (from the website) has a width of 55, however
+// that creates weird spacing issues when you crash into an obstacle
+// while ducking
 @(rodata)
 trex_hitboxes_ducking := [?]raylib.Rectangle {
-	{ 1, 18, 55, 25}
+	{ 1, 18, 40, 25}
 }
 
 ////////////////////////////////
