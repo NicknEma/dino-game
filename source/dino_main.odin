@@ -285,6 +285,15 @@ when ODIN_DEBUG {
 	Obstacle_Debug :: struct {}
 }
 
+////////////////////////////////
+// Restart icon constants
+
+RESTART_ICON_W :: 36;
+RESTART_ICON_H :: 32;
+
+////////////////////////////////
+// Game code
+
 @(disabled=!ODIN_DEBUG)
 write_sound_assets_to_disk :: proc() {
 	// NOTE(ema): This was used to generate the asset files from the strings found on the
@@ -1146,35 +1155,17 @@ main :: proc() {
 			
 			// Draw restart icon
 			{
-				// TODO(ema): Width and height will always be the same for sprite and screen
-				SPRITE_1X_RESTART_ICON_W :: 36;
-				SPRITE_1X_RESTART_ICON_H :: 32;
-				
-				SCREEN_RESTART_ICON_W :: 36;
-				SCREEN_RESTART_ICON_H :: 32;
-				
-				sprite_restart_icon_w := f32(SPRITE_1X_RESTART_ICON_W);
-				sprite_restart_icon_h := f32(SPRITE_1X_RESTART_ICON_H);
-				
-				screen_restart_icon_w := f32(SCREEN_RESTART_ICON_W);
-				screen_restart_icon_h := f32(SCREEN_RESTART_ICON_H);
-				
-				if double_resolution {
-					sprite_restart_icon_w, sprite_restart_icon_h = 2*sprite_restart_icon_w, 2*sprite_restart_icon_h;
-					screen_restart_icon_w, screen_restart_icon_h = 2*screen_restart_icon_w, 2*screen_restart_icon_h;
+				restart_icon_rec := raylib.Rectangle {
+					sprite_coordinates.restart_icon.x, sprite_coordinates.restart_icon.y,
+					RESTART_ICON_W, RESTART_ICON_H
 				}
 				
-				sprite_restart_icon_rec := raylib.Rectangle {
-					sprite_coordinates.restart_icon.x, sprite_coordinates.restart_icon.y,
-					sprite_restart_icon_w, sprite_restart_icon_h
-				};
+				restart_icon_pos := [2]f32 {
+					f32(window_w) / 2.0 - RESTART_ICON_W / 2.0,
+					f32(window_h) / 2.0
+				}
 				
-				screen_restart_icon_pos := [2]f32 {
-					f32(window_w) / 2 - screen_restart_icon_w / 2,
-					f32(window_h) / 2
-				};
-				
-				raylib.DrawTextureRec(sprite_tex, sprite_restart_icon_rec, screen_restart_icon_pos, raylib.WHITE);
+				raylib.DrawTextureRec(sprite_tex, restart_icon_rec, restart_icon_pos, raylib.WHITE);
 			}
 		}
 		
