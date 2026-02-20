@@ -364,6 +364,9 @@ main :: proc() {
 		trex_screen_position_x *= 2;
 	}
 	
+	trex_h_normal := f32(SPRITE_1X_TREX_HEIGHT_NORMAL);
+	trex_h_duck := f32(SPRITE_1X_TREX_HEIGHT_DUCK);
+	
 	trex_ground_y_normal := f32(window_h - bottom_pad) - trex_h_normal;
 	trex_ground_y_duck := f32(window_h - bottom_pad) - trex_h_duck;
 	
@@ -586,7 +589,7 @@ main :: proc() {
 				// it doesn't feel like the inputs are happening 1 frame later
 				#partial switch trex.status {
 					case .Running: {
-						trex.hitboxes = trex_collision_boxes_running[:];
+						trex.hitboxes = trex_hitboxes_running[:];
 						trex.screen_pos.y = trex_ground_y_normal;
 						
 						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
@@ -606,7 +609,7 @@ main :: proc() {
 					}
 					
 					case .Ducking: {
-						trex.hitboxes = trex_collision_boxes_ducking[:];
+						trex.hitboxes = trex_hitboxes_ducking[:];
 						trex.screen_pos.y = trex_ground_y_duck;
 						
 						if raylib.IsKeyUp(raylib.KeyboardKey.DOWN) {
@@ -615,7 +618,7 @@ main :: proc() {
 					}
 					
 					case .Jumping: {
-						trex.hitboxes = trex_collision_boxes_running[:];
+						trex.hitboxes = trex_hitboxes_running[:];
 						
 						// TODO(ema): Rename this variable
 						// TODO(ema): Review MS_PER_FRAME
