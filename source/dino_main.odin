@@ -42,10 +42,11 @@ SPRITE_1X_COORDINATES :: Sprite_Coordinates {
 	cactus_small = {228, 2},
 	restart_icon = {  2, 2},
 	pterodactyl  = {134, 2},
+	game_over = {484, 15},
 	horizon = { 2, 54},
 	cloud   = {86,  2},
-	trex = {677, 2},
-	text = {484, 2}
+	score   = {484, 2},
+	trex = {677, 2}
 }
 
 SPRITE_2X_COORDINATES :: Sprite_Coordinates {
@@ -53,10 +54,11 @@ SPRITE_2X_COORDINATES :: Sprite_Coordinates {
 	cactus_small = {446, 2},
 	restart_icon = {  2, 2},
 	pterodactyl  = {260, 2},
+	game_over = {954, 15},
 	horizon = {  2, 104},
 	cloud   = {166,   2},
-	trex = {1338, 2},
-	text = { 954, 2}
+	score   = {954, 2},
+	trex  = {1338, 2}
 }
 
 // NOTE(ema): From the top-left corner of the image
@@ -65,10 +67,11 @@ Sprite_Coordinates :: struct {
 	cactus_small: [2]f32,
 	restart_icon: [2]f32,
 	pterodactyl:  [2]f32,
+	game_over: [2]f32,
 	horizon: [2]f32,
 	cloud:   [2]f32,
-	trex: [2]f32,
-	text: [2]f32
+	score:   [2]f32,
+	trex: [2]f32
 }
 
 sprite_coordinates: Sprite_Coordinates;
@@ -293,7 +296,6 @@ METER_CHAR_SPACE :: 1; // NOTE(ema): Space between chars on screen
 ////////////////////////////////
 // Game over text constants
 
-GAME_OVER_TEXT_Y_OFFSET :: 13; // NOTE(ema): Offset from the start of the text (numbers)
 GAME_OVER_TEXT_W :: 191;
 GAME_OVER_TEXT_H ::  11;
 
@@ -1002,9 +1004,6 @@ main :: proc() {
 		// Draw obstacles
 		{
 			obstacle_sprite_rects = OBSTACLE_SPRITE_RECTS;
-			if double_resolution {
-				// TODO(ema): Incomplete
-			}
 			for o in small_array.slice(&obstacle_buffer) {
 				pos := o.world_position;
 				
@@ -1062,7 +1061,7 @@ main :: proc() {
 			}
 			
 			digit_base_rec := raylib.Rectangle {
-				sprite_coordinates.text.x, sprite_coordinates.text.y,
+				sprite_coordinates.score.x, sprite_coordinates.score.y,
 				METER_CHAR_W, METER_CHAR_H
 			};
 			
@@ -1097,7 +1096,7 @@ main :: proc() {
 			// Draw text
 			{
 				text_rec := raylib.Rectangle {
-					sprite_coordinates.text.x, sprite_coordinates.text.y + GAME_OVER_TEXT_Y_OFFSET,
+					sprite_coordinates.game_over.x, sprite_coordinates.game_over.y,
 					GAME_OVER_TEXT_W, GAME_OVER_TEXT_H
 				};
 				
