@@ -34,6 +34,9 @@ OFFLINE_SOUND_REACHED :: #load("../assets/offline_sound_reached.ogg")
 ////////////////////////////////
 // Sprites
 
+SPRITE             :: SPRITE_1X
+SPRITE_COORDINATES :: SPRITE_1X_COORDINATES
+
 SPRITE_1X :: #load("../assets/offline-sprite-1x.png")
 SPRITE_2X :: #load("../assets/offline-sprite-2x.png")
 
@@ -73,9 +76,6 @@ Sprite_Coordinates :: struct {
 	score:   [2]f32,
 	trex: [2]f32
 }
-
-sprite_coordinates: Sprite_Coordinates;
-sprite_bytes: []u8;
 
 ////////////////////////////////
 // Trex constants & types
@@ -336,15 +336,11 @@ write_sound_assets_to_disk :: proc() {
 main :: proc() {
 	double_resolution := false;
 	
-	sprite_coordinates = SPRITE_1X_COORDINATES;
 	sprite_trex_rects := SPRITE_1X_TREX_RECTS;
-	sprite_bytes = SPRITE_1X;
 	if double_resolution {
-		sprite_coordinates = SPRITE_2X_COORDINATES;
 		for status in sprite_trex_rects {
 			for &rec in status do rec = double_rect(rec);
 		}
-		sprite_bytes = SPRITE_2X;
 		
 		sprite_ground_x, sprite_ground_y = SPRITE_2X_COORDINATES.horizon.x, SPRITE_2X_COORDINATES.horizon.y;
 		sprite_ground_w, sprite_ground_h = sprite_ground_w * 2, sprite_ground_h * 2;
@@ -363,7 +359,8 @@ main :: proc() {
 	sound_hit     := raylib.LoadSoundFromWave(raylib.LoadWaveFromMemory(".ogg", raw_data(OFFLINE_SOUND_HIT),     cast(i32)len(OFFLINE_SOUND_HIT)));
 	sound_reached := raylib.LoadSoundFromWave(raylib.LoadWaveFromMemory(".ogg", raw_data(OFFLINE_SOUND_REACHED), cast(i32)len(OFFLINE_SOUND_REACHED)));
 	
-	sprite_img := raylib.LoadImageFromMemory(".png", raw_data(sprite_bytes), cast(i32)len(sprite_bytes));
+	sprite_mem := SPRITE;
+	sprite_img := raylib.LoadImageFromMemory(".png", raw_data(sprite_mem), cast(i32)len(sprite_mem));
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
 	BOTTOM_PAD :: 10;
@@ -451,7 +448,7 @@ main :: proc() {
 	}
 	
 	sprite_cloud_rec := raylib.Rectangle {
-		sprite_coordinates.cloud.x, sprite_coordinates.cloud.y,
+		SPRITE_COORDINATES.cloud.x, SPRITE_COORDINATES.cloud.y,
 		sprite_cloud_w, sprite_cloud_h
 	};
 	
@@ -1009,9 +1006,9 @@ main :: proc() {
 				
 				coords: [2]f32; // TODO(ema): See if we can avoid this switch
 				switch o.tag {
-					case .Cactus_Small: coords = sprite_coordinates.cactus_small;
-					case .Cactus_Large: coords = sprite_coordinates.cactus_large;
-					case .Pterodactyl: coords = sprite_coordinates.pterodactyl;
+					case .Cactus_Small: coords = SPRITE_COORDINATES.cactus_small;
+					case .Cactus_Large: coords = SPRITE_COORDINATES.cactus_large;
+					case .Pterodactyl:  coords = SPRITE_COORDINATES.pterodactyl;
 				}
 				rec := shift_rect(obstacle_sprite_rects[o.tag], coords);
 				
@@ -1035,7 +1032,7 @@ main :: proc() {
 		// Draw trex
 		{
 			trex_sprite_rect := sprite_trex_rects[trex.status][trex.anim_frame_index];
-			trex_sprite_rect  = shift_rect(trex_sprite_rect, sprite_coordinates.trex);
+			trex_sprite_rect  = shift_rect(trex_sprite_rect, SPRITE_COORDINATES.trex);
 			
 			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex.screen_pos, raylib.WHITE);
 		}
@@ -1061,7 +1058,7 @@ main :: proc() {
 			}
 			
 			digit_base_rec := raylib.Rectangle {
-				sprite_coordinates.score.x, sprite_coordinates.score.y,
+				SPRITE_COORDINATES.score.x, SPRITE_COORDINATES.score.y,
 				METER_CHAR_W, METER_CHAR_H
 			};
 			
@@ -1096,7 +1093,7 @@ main :: proc() {
 			// Draw text
 			{
 				text_rec := raylib.Rectangle {
-					sprite_coordinates.game_over.x, sprite_coordinates.game_over.y,
+					SPRITE_COORDINATES.game_over.x, SPRITE_COORDINATES.game_over.y,
 					GAME_OVER_TEXT_W, GAME_OVER_TEXT_H
 				};
 				
@@ -1111,7 +1108,7 @@ main :: proc() {
 			// Draw restart icon
 			{
 				restart_icon_rec := raylib.Rectangle {
-					sprite_coordinates.restart_icon.x, sprite_coordinates.restart_icon.y,
+					SPRITE_COORDINATES.restart_icon.x, SPRITE_COORDINATES.restart_icon.y,
 					RESTART_ICON_W, RESTART_ICON_H
 				}
 				
