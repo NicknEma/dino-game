@@ -22,11 +22,8 @@ import "vendor:raylib"
 TARGET_FPS :: 60
 MS_PER_FRAME :: 1000 / TARGET_FPS
 
-DEFAULT_WINDOW_W :: 600
-DEFAULT_WINDOW_H :: 150
-
-window_w: i32
-window_h: i32
+WINDOW_W :: 600
+WINDOW_H :: 150
 
 BG_COLOR_DAY :: 0xF7F7F7FF
 
@@ -181,7 +178,7 @@ sprite_ground_h := f32(SPRITE_1X_GROUND_H);
 
 SCREEN_GROUND_X :: 0
 SCREEN_GROUND_Y :: 127 // TODO(ema): WINDOW_H(150) - BOTTOM_PAD(10) - GROUND_H(12) = 128... which one is right?
-SCREEN_GROUND_W :: DEFAULT_WINDOW_W - 2*SCREEN_GROUND_X
+SCREEN_GROUND_W :: WINDOW_W - 2*SCREEN_GROUND_X
 SCREEN_GROUND_H :: 12
 
 screen_ground_x := f32(SCREEN_GROUND_X);
@@ -321,18 +318,11 @@ write_sound_assets_to_disk :: proc() {
 
 main :: proc() {
 	double_resolution := false;
-	for arg in os.args {
-		if arg == "-2x" {
-			double_resolution = true;
-		}
-	}
 	
-	window_w, window_h = DEFAULT_WINDOW_W, DEFAULT_WINDOW_H;
 	sprite_coordinates = SPRITE_1X_COORDINATES;
 	sprite_trex_rects := SPRITE_1X_TREX_RECTS;
 	sprite_bytes = SPRITE_1X;
 	if double_resolution {
-		window_w, window_h = 2*DEFAULT_WINDOW_W, 2*DEFAULT_WINDOW_H;
 		sprite_coordinates = SPRITE_2X_COORDINATES;
 		for status in sprite_trex_rects {
 			for &rec in status do rec = double_rect(rec);
@@ -346,7 +336,7 @@ main :: proc() {
 	}
 	
 	raylib.SetTraceLogLevel(.ERROR);
-	raylib.InitWindow(window_w, window_h, "A window");
+	raylib.InitWindow(WINDOW_W, WINDOW_H, "A window");
 	raylib.SetExitKey(raylib.KeyboardKey.KEY_NULL);
 	raylib.SetTargetFPS(TARGET_FPS);
 	
@@ -376,8 +366,8 @@ main :: proc() {
 	trex_h_normal := f32(SPRITE_1X_TREX_HEIGHT_NORMAL);
 	trex_h_duck := f32(SPRITE_1X_TREX_HEIGHT_DUCK);
 	
-	trex_ground_y_normal := f32(window_h - bottom_pad) - trex_h_normal;
-	trex_ground_y_duck := f32(window_h - bottom_pad) - trex_h_duck;
+	trex_ground_y_normal := f32(WINDOW_H - bottom_pad) - trex_h_normal;
+	trex_ground_y_duck := f32(WINDOW_H - bottom_pad) - trex_h_duck;
 	
 	trex: Trex;
 	trex.status = .Waiting;
@@ -586,7 +576,7 @@ main :: proc() {
 					small_array.clear(&obstacle_buffer);
 					// TODO(ema): Reset ground
 					small_array.clear(&clouds);
-					small_array.push_back(&clouds, make_cloud(x = f32(window_w)));
+					small_array.push_back(&clouds, make_cloud(x = f32(WINDOW_W)));
 					
 					frame_count_since_attempt_start = 0;
 					time_since_attempt_start = 0;
@@ -716,7 +706,7 @@ main :: proc() {
 				try_add_cloud := false;
 				if small_array.len(clouds) > 0 {
 					last := small_array.get(clouds, small_array.len(clouds) - 1);
-					if small_array.space(clouds) > 0 && last.screen_pos.x + screen_cloud_w + last.gap < f32(window_w) {
+					if small_array.space(clouds) > 0 && last.screen_pos.x + screen_cloud_w + last.gap < f32(WINDOW_W) {
 						try_add_cloud = true;
 					}
 				} else {
@@ -724,12 +714,12 @@ main :: proc() {
 				}
 				
 				if try_add_cloud && rand.float32() < CLOUD_FREQUENCY {
-					small_array.push_back(&clouds, make_cloud(x = f32(window_w)));
+					small_array.push_back(&clouds, make_cloud(x = f32(WINDOW_W)));
 				}
 			}
 			
 			// TODO(ema): Inline these functions
-			update_obstacles(&obstacle_history, &obstacle_buffer, trex.run_speed, dt, f32(window_w));
+			update_obstacles(&obstacle_history, &obstacle_buffer, trex.run_speed, dt, f32(WINDOW_W));
 			
 			update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
 									 buffer: ^small_array.Small_Array($B, Obstacle),
@@ -1079,7 +1069,7 @@ main :: proc() {
 				sprite_meter_char_w, sprite_meter_char_h
 			};
 			
-			score_meter_x := f32(window_w) - (screen_meter_char_w * (f32(meter.digit_count) + 1.0));
+			score_meter_x := f32(WINDOW_W) - (screen_meter_char_w * (f32(meter.digit_count) + 1.0));
 			score_meter_y := f32(5.0);
 			
 			if meter_should_draw {
@@ -1146,8 +1136,8 @@ main :: proc() {
 				};
 				
 				screen_text_pos := [2]f32 {
-					f32(window_w) / 2 - screen_text_w / 2, // TODO(ema): Round?
-					(f32(window_h) - 25) / 3 // TODO(ema): Round?
+					f32(WINDOW_W) / 2 - screen_text_w / 2, // TODO(ema): Round?
+					(f32(WINDOW_W) - 25) / 3 // TODO(ema): Round?
 				};
 				
 				raylib.DrawTextureRec(sprite_tex, sprite_text_rec, screen_text_pos, raylib.WHITE);
@@ -1161,8 +1151,8 @@ main :: proc() {
 				}
 				
 				restart_icon_pos := [2]f32 {
-					f32(window_w) / 2.0 - RESTART_ICON_W / 2.0,
-					f32(window_h) / 2.0
+					f32(WINDOW_W) / 2.0 - RESTART_ICON_W / 2.0,
+					f32(WINDOW_W) / 2.0
 				}
 				
 				raylib.DrawTextureRec(sprite_tex, restart_icon_rec, restart_icon_pos, raylib.WHITE);
