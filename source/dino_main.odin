@@ -283,6 +283,13 @@ when ODIN_DEBUG {
 }
 
 ////////////////////////////////
+// Game over text constants
+
+GAME_OVER_TEXT_Y_OFFSET :: 13; // NOTE(ema): Offset from the start of the text (numbers)
+GAME_OVER_TEXT_W :: 191;
+GAME_OVER_TEXT_H ::  11;
+
+////////////////////////////////
 // Restart icon constants
 
 RESTART_ICON_W :: 36;
@@ -1107,40 +1114,17 @@ main :: proc() {
 		if trex.status == .Crashed {
 			// Draw text
 			{
-				SPRITE_1X_TEXT_Y ::  13;
-				
-				// TODO(ema): Width and height will always be the same for sprite and screen
-				SPRITE_1X_TEXT_W :: 191;
-				SPRITE_1X_TEXT_H ::  11;
-				
-				SCREEN_TEXT_W :: 191;
-				SCREEN_TEXT_H ::  11;
-				
-				sprite_text_y := f32(SPRITE_1X_TEXT_Y);
-				
-				sprite_text_w := f32(SPRITE_1X_TEXT_W);
-				sprite_text_h := f32(SPRITE_1X_TEXT_H);
-				
-				screen_text_w := f32(SCREEN_TEXT_W);
-				screen_text_h := f32(SCREEN_TEXT_H);
-				
-				if double_resolution {
-					sprite_text_y                = 2*sprite_text_y;
-					sprite_text_w, sprite_text_h = 2*sprite_text_w, 2*sprite_text_h;
-					screen_text_w, screen_text_h = 2*screen_text_w, 2*screen_text_h;
-				}
-				
-				sprite_text_rec := raylib.Rectangle {
-					sprite_coordinates.text.x, sprite_coordinates.text.y + sprite_text_y,
-					sprite_text_w, sprite_text_h
+				text_rec := raylib.Rectangle {
+					sprite_coordinates.text.x, sprite_coordinates.text.y + GAME_OVER_TEXT_Y_OFFSET,
+					GAME_OVER_TEXT_W, GAME_OVER_TEXT_H
 				};
 				
-				screen_text_pos := [2]f32 {
-					f32(WINDOW_W) / 2 - screen_text_w / 2, // TODO(ema): Round?
-					(f32(WINDOW_W) - 25) / 3 // TODO(ema): Round?
+				text_pos := [2]f32 {
+					math.round(f32((WINDOW_W) / 2.0 - GAME_OVER_TEXT_W / 2.0)),
+					math.round(f32((WINDOW_H - 25.0) / 3.0))
 				};
 				
-				raylib.DrawTextureRec(sprite_tex, sprite_text_rec, screen_text_pos, raylib.WHITE);
+				raylib.DrawTextureRec(sprite_tex, text_rec, text_pos, raylib.WHITE);
 			}
 			
 			// Draw restart icon
