@@ -505,30 +505,16 @@ main :: proc() {
 	MIN_SKY_LEVEL :: 30;
 	
 	CLOUD_FREQUENCY :: 0.5;
-	CLOUD_SPEED :: 0.2;
-	MAX_CLOUDS  :: 6;
+	CLOUD_SPEED   :: 0.2;
+	MAX_CLOUDS    :: 6;
 	
-	// TODO(ema): Width and height will always be the same for sprite and screen
-	SPRITE_1X_CLOUD_W :: 46;
-	SPRITE_1X_CLOUD_H :: 14;
-	SCREEN_CLOUD_W :: 46;
-	SCREEN_CLOUD_H :: 14;
+	CLOUD_W :: 46;
+	CLOUD_H :: 14;
 	
-	sprite_cloud_w := f32(SPRITE_1X_CLOUD_W);
-	sprite_cloud_h := f32(SPRITE_1X_CLOUD_H);
-	
-	screen_cloud_w := f32(SCREEN_CLOUD_W);
-	screen_cloud_h := f32(SCREEN_CLOUD_H);
-	
-	if double_resolution {
-		sprite_cloud_w, sprite_cloud_h = 2*sprite_cloud_w, 2*sprite_cloud_h;
-		screen_cloud_w, screen_cloud_h = 2*screen_cloud_w, 2*screen_cloud_h;
-	}
-	
-	sprite_cloud_rec := raylib.Rectangle {
+	cloud_rec := raylib.Rectangle {
 		SPRITE_COORDINATES.cloud.x, SPRITE_COORDINATES.cloud.y,
-		sprite_cloud_w, sprite_cloud_h
-	};
+		CLOUD_W, CLOUD_H
+	}
 	
 	Cloud :: struct {
 		screen_pos: [2]f32,
@@ -797,7 +783,7 @@ main :: proc() {
 					cloud := small_array.get_ptr(&clouds, cloud_index);
 					cloud.screen_pos.x -= delta;
 					
-					is_visible_or_to_the_right := cloud.screen_pos.x + screen_cloud_w > 0;
+					is_visible_or_to_the_right := cloud.screen_pos.x + CLOUD_W > 0;
 					if !is_visible_or_to_the_right {
 						small_array.append(&passed_clouds, cloud_index);
 					}
@@ -808,7 +794,7 @@ main :: proc() {
 				try_add_cloud := false;
 				if small_array.len(clouds) > 0 {
 					last := small_array.get(clouds, small_array.len(clouds) - 1);
-					if small_array.space(clouds) > 0 && last.screen_pos.x + screen_cloud_w + last.gap < WINDOW_W {
+					if small_array.space(clouds) > 0 && last.screen_pos.x + CLOUD_W + last.gap < WINDOW_W {
 						try_add_cloud = true;
 					}
 				} else {
@@ -1003,7 +989,7 @@ main :: proc() {
 		
 		// Draw clouds
 		for cloud in small_array.slice(&clouds) {
-			raylib.DrawTextureRec(sprite_tex, sprite_cloud_rec, cloud.screen_pos, raylib.WHITE);
+			raylib.DrawTextureRec(sprite_tex, cloud_rec, cloud.screen_pos, raylib.WHITE);
 		}
 		
 		// Draw obstacles
