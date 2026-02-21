@@ -888,59 +888,60 @@ main :: proc() {
 					}
 					
 					trex.status = .Crashed;
+					trex.run_speed = 0.0;
 					meter.score = meter.up_to_date_score;
 					meter.high_score = max(meter.high_score, meter.score);
 				}
 			}
+			
+			// Update trex speed & distance
+			{
+				// NOTE(ema): Don't do this before collision checking, because *technically*
+				// you haven't run the distance if you crashed.
+				trex.distance_ran += trex.run_speed * dt * TARGET_FPS;
+				if trex.run_speed < TREX_MAX_RUN_SPEED {
+					trex.run_speed += TREX_RUN_ACCELERATION;
+				}
+			}
 		}
 		
-		meter_should_draw := true;
+		meter_is_visible := true;
 		
-		// Simulate trex run
+		// Update high score
 		if trex.status != .Crashed && trex.status != .Waiting {
-			// NOTE(ema): Don't do this before collision checking, because *technically*
-			// you haven't run the distance if you crashed
-			trex.distance_ran += trex.run_speed * dt * TARGET_FPS;
-			if trex.run_speed < TREX_MAX_RUN_SPEED {
-				trex.run_speed += TREX_RUN_ACCELERATION;
-			}
-			
-			// Update high score
-			{
-				score := cast(i32)math.round(METER_INTERNAL_TO_DISPLAY_COEFFICIENT * math.ceil(trex.distance_ran));
-				meter.up_to_date_score = score;
-				if !meter.achievement {
-					digit_count := cast(i32)math.count_digits_of_base(score, 10);
+			score := cast(i32)math.round(METER_INTERNAL_TO_DISPLAY_COEFFICIENT * math.ceil(trex.distance_ran));
+			meter.up_to_date_score = score;
+			if !meter.achievement {
+				digit_count := cast(i32)math.count_digits_of_base(score, 10);
+				
+				if digit_count > meter.digit_count && meter.digit_count == METER_DEFAULT_DIGIT_COUNT {
+					meter.digit_count += 1;
+				}
+				
+				if score > 0 && score % METER_ACHIEVEMENT_DISTANCE == 0 {
+					meter.achievement = true;
+					meter.flash_timer = 0;
 					
-					if digit_count > meter.digit_count && meter.digit_count == METER_DEFAULT_DIGIT_COUNT {
-						meter.digit_count += 1;
+					if !mute_sfx {
+						raylib.PlaySound(sound_reached);
 					}
+				}
+				
+				meter.score = score;
+			} else {
+				if meter.flash_iterations <= METER_FLASH_ITERATIONS {
+					meter.flash_timer += dt * 1000;
 					
-					if score > 0 && score % METER_ACHIEVEMENT_DISTANCE == 0 {
-						meter.achievement = true;
-						meter.flash_timer = 0;
-						
-						if !mute_sfx {
-							raylib.PlaySound(sound_reached);
-						}
-					}
-					
-					meter.score = score;
-				} else {
-					if meter.flash_iterations <= METER_FLASH_ITERATIONS {
-						meter.flash_timer += dt * 1000;
-						
-						if meter.flash_timer < METER_FLASH_DURATION {
-							meter_should_draw = false;
-						} else if meter.flash_timer > METER_FLASH_DURATION * 2 {
-							meter.flash_iterations += 1;
-							meter.flash_timer = 0.0;
-						}
-					} else {
-						meter.flash_iterations = 0;
+					if meter.flash_timer < METER_FLASH_DURATION {
+						meter_is_visible = false;
+					} else if meter.flash_timer > METER_FLASH_DURATION * 2 {
+						meter.flash_iterations += 1;
 						meter.flash_timer = 0.0;
-						meter.achievement = false;
 					}
+				} else {
+					meter.flash_iterations = 0;
+					meter.flash_timer = 0.0;
+					meter.achievement = false;
 				}
 			}
 		}
