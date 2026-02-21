@@ -8,6 +8,7 @@ package dino
 // TODO(ema): Don't embed the larger texture
 // TODO(ema): build_release.bat/.sh
 // TODO(ema): Update Odin compiler and change os2 to os
+// TODO(ema): Update README
 
 import "base:runtime"
 import "base:intrinsics"
