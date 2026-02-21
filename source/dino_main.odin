@@ -548,12 +548,10 @@ main :: proc() {
 	// Other variables
 	
 	frame_count_since_attempt_start := 0;
-	time_since_attempt_start := f32(0);
-	time_since_startup := f32(0);
+	time_since_attempt_start: f32;
+	time_since_startup: f32;
 	
-	// Session info
 	attempt_count := 0;
-	
 	mute_sfx := false;
 	
 	when ODIN_DEBUG {
