@@ -534,12 +534,12 @@ main :: proc() {
 	////////////////////////////////
 	// Distance meter variables
 	
-	METER_DEFAULT_DIGIT_COUNT :: 5;
+	METER_DEFAULT_DIGIT_COUNT  :: 5;
 	
 	METER_ACHIEVEMENT_DISTANCE :: 100;
-	METER_COEFFICIENT :: 0.025;
+	METER_INTERNAL_TO_DISPLAY_COEFFICIENT :: 0.025;
 	
-	METER_FLASH_DURATION :: 1000 / 4;
+	METER_FLASH_DURATION   :: 1000 / 4;
 	METER_FLASH_ITERATIONS :: 3;
 	
 	Meter :: struct {
@@ -556,6 +556,9 @@ main :: proc() {
 	}
 	
 	meter: Meter;
+	
+	////////////////////////////////
+	// Other variables
 	
 	// Attempt info
 	frame_count_since_attempt_start := 0;
@@ -898,7 +901,7 @@ main :: proc() {
 			
 			// Update high score
 			{
-				score := cast(i32)math.round(METER_COEFFICIENT * math.ceil(trex.distance_ran));
+				score := cast(i32)math.round(METER_INTERNAL_TO_DISPLAY_COEFFICIENT * math.ceil(trex.distance_ran));
 				meter.up_to_date_score = score;
 				if !meter.achievement {
 					digit_count := cast(i32)math.count_digits_of_base(score, 10);
