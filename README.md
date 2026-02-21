@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="assets/trex.jpg" alt="Game logo." style="width:25%">
+    <img src="assets/trex.jpg" alt="Game logo.">
 </p>
 
 # dino-game
