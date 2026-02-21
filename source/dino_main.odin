@@ -393,7 +393,88 @@ main :: proc() {
 	// Obstacle variables
 	
 	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
-	obstacle_buffer: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
+	obstacles: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
+	
+	make_obstacle :: proc(history: []Obstacle_Tag, trex_run_speed: f32, x: f32, gen_tag := context.random_generator) -> Obstacle {
+		TAG_WEIGHTS :: [len(Obstacle_Tag)]int {
+			Obstacle_Tag.Cactus_Small = 1,
+			Obstacle_Tag.Cactus_Large = 1,
+			Obstacle_Tag.Pterodactyl  = 10
+		};
+		
+		tag: Obstacle_Tag = ---;
+		for it := 0;; it += 1 {
+			tag_weights := TAG_WEIGHTS;
+			tag = weighted_choice_enum(Obstacle_Tag, tag_weights);
+			templates := OBSTACLE_TEMPLATES;
+			if slice.count(history, tag) < MAX_OBSTACLE_DUPLICATION &&
+				trex_run_speed >= templates[tag].min_trex_run_speed_for_single_spawn {
+				break;
+			}
+			if it == 100 {
+				tag = .Cactus_Small;
+				break;
+			}
+		}
+		
+		templates := OBSTACLE_TEMPLATES;
+		template  := templates[tag];
+		
+		obstacle  := Obstacle { tag = tag };
+		small_array.push_back_elems(&obstacle.hitboxes, ..template.hitboxes);
+		
+		if trex_run_speed >= template.min_trex_run_speed_for_multiple_spawn {
+			obstacle.length = cast(f32)rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH + 1);
+		} else {
+			obstacle.length = 1;
+		}
+		
+		obstacle_width := get_obstacle_width(obstacle);
+		
+		DO_UGLY_BUT_FAITHFUL_POP_IN :: false;
+		
+		when DO_UGLY_BUT_FAITHFUL_POP_IN {
+			obstacle.world_position.x = WINDOW_W - obstacle_width;
+		} else {
+			obstacle.world_position.x = WINDOW_W;
+		}
+		
+		obstacle.world_position.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
+		
+		#no_bounds_check if obstacle.length > 1 {
+			#assert(len(obstacle.hitboxes.data) >= 3);
+			b := small_array.slice(&obstacle.hitboxes);
+			
+			// NOTE(ema): When the obstacle is a compound obstacle, make adjustments to the
+			// collision boxes so that they cover the entire width.
+			b[1].width = obstacle_width - b[0].width - b[2].width; // Make the middle one wider
+			b[2].x = obstacle_width - b[2].width;                  // Shift the last one to the right
+		}
+		
+		obstacle.speed_offset = template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
+		
+		{
+			min_gap := obstacle_width * trex_run_speed + template.min_gap * MIN_OBSTACLE_GAP_COEFFICIENT;
+			max_gap := min_gap * MAX_OBSTACLE_GAP_COEFFICIENT;
+			obstacle.gap = rand.float32_range(min_gap, max_gap);
+		}
+		
+		obstacle.seconds_since_anim_frame_changed = 0;
+		obstacle.anim_frames_per_second = template.anim_frames_per_second;
+		obstacle.current_anim_frame = 0;
+		
+		when ODIN_DEBUG {
+			debug_colors := []raylib.Color {
+				raylib.RED, raylib.ORANGE, raylib.GREEN, raylib.SKYBLUE, raylib.PURPLE
+			};
+			@(static) debug_color_index := 0;
+			
+			obstacle.color = debug_colors[debug_color_index];
+			debug_color_index = (debug_color_index + 1) % len(debug_colors);
+		}
+		
+		return obstacle;
+	}
 	
 	////////////////////////////////
 	// Ground variables
@@ -506,7 +587,7 @@ main :: proc() {
 			Hitboxes,
 			Variables,
 			Mute_Sfx,
-			Obstacle_Buffer
+			Obstacles
 		}
 		
 		debug_draw_flags := bit_set[Debug_Draw_Flag] { .Hotkeys, .Mute_Sfx };
@@ -591,10 +672,10 @@ main :: proc() {
 					trex_jump_count = 0;
 					
 					small_array.clear(&obstacle_history);
-					small_array.clear(&obstacle_buffer);
+					small_array.clear(&obstacles);
 					// TODO(ema): Reset ground
 					small_array.clear(&clouds);
-					small_array.push_back(&clouds, make_cloud(x = f32(WINDOW_W)));
+					small_array.push_back(&clouds, make_cloud(x = WINDOW_W));
 					
 					frame_count_since_attempt_start = 0;
 					time_since_attempt_start = 0;
@@ -727,7 +808,7 @@ main :: proc() {
 				try_add_cloud := false;
 				if small_array.len(clouds) > 0 {
 					last := small_array.get(clouds, small_array.len(clouds) - 1);
-					if small_array.space(clouds) > 0 && last.screen_pos.x + screen_cloud_w + last.gap < f32(WINDOW_W) {
+					if small_array.space(clouds) > 0 && last.screen_pos.x + screen_cloud_w + last.gap < WINDOW_W {
 						try_add_cloud = true;
 					}
 				} else {
@@ -735,145 +816,65 @@ main :: proc() {
 				}
 				
 				if try_add_cloud && rand.float32() < CLOUD_FREQUENCY {
-					small_array.push_back(&clouds, make_cloud(x = f32(WINDOW_W)));
+					small_array.push_back(&clouds, make_cloud(x = WINDOW_W));
 				}
 			}
 			
-			// TODO(ema): Inline these functions
-			update_obstacles(&obstacle_history, &obstacle_buffer, trex.run_speed, dt, f32(WINDOW_W));
-			
-			update_obstacles :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
-									 buffer: ^small_array.Small_Array($B, Obstacle),
-									 current_speed: f32, dt: f32, horizon_w: f32) {
-				passed_obstacles: small_array.Small_Array(B, int);
-				for &o, i in small_array.slice(buffer) {
-					templates := OBSTACLE_TEMPLATES;
-					template  := templates[o.tag];
-					
-					speed := current_speed + o.speed_offset;
-					delta := (speed * TARGET_FPS * dt);
-					o.world_position.x -= delta;
-					
-					o.seconds_since_anim_frame_changed += dt;
-					if o.seconds_since_anim_frame_changed > o.anim_frames_per_second {
-						o.current_anim_frame += 1;
-						if o.current_anim_frame == template.num_anim_frames do o.current_anim_frame = 0;
-						
-						o.seconds_since_anim_frame_changed = 0;
-					}
-					
-					is_visible_or_to_the_right := o.world_position.x + get_obstacle_width(o) > 0;
-					if !is_visible_or_to_the_right {
-						small_array.push_back(&passed_obstacles, i);
-					}
-				}
-				
-				ordered_remove_elems(buffer, small_array.slice(&passed_obstacles));
-				
-				if small_array.len(buffer^) > 0 {
-					last := small_array.get(buffer^, small_array.len(buffer^) - 1);
-					if last.world_position.x + get_obstacle_width(last) + last.gap < horizon_w &&
-						small_array.len(buffer^) < small_array.cap(buffer^) {
-						append_obstacle(history, buffer, current_speed, horizon_w);
-					}
-				} else {
-					append_obstacle(history, buffer, current_speed, horizon_w);
-				}
-			}
-			
-			append_obstacle :: proc(history: ^small_array.Small_Array($H, Obstacle_Tag),
-									buffer: ^small_array.Small_Array($B, Obstacle),
-									current_speed: f32, horizon_w: f32) {
-				TAG_WEIGHTS :: [len(Obstacle_Tag)]int {
-					Obstacle_Tag.Cactus_Small = 1,
-					Obstacle_Tag.Cactus_Large = 1,
-					Obstacle_Tag.Pterodactyl  = 10
-				};
-				
-				tag: Obstacle_Tag = ---;
-				for it := 0;; it += 1 {
-					tag_weights := TAG_WEIGHTS;
-					tag = weighted_choice_enum(Obstacle_Tag, tag_weights);
-					templates := OBSTACLE_TEMPLATES;
-					if slice.count(small_array.slice(history), tag) < MAX_OBSTACLE_DUPLICATION &&
-						current_speed >= templates[tag].min_trex_run_speed_for_single_spawn {
-						break;
-					}
-					if it == 100 {
-						tag = .Cactus_Small;
-						break;
-					}
-				}
-				
-				obstacle := make_obstacle(tag, current_speed, horizon_w);
-				force_push_back(buffer, obstacle); // TODO(ema): Should not be necessary as we only push when there is space
-				force_push_front(history, tag);
-			}
-			
-			make_obstacle :: proc(tag: Obstacle_Tag, current_speed: f32, horizon_w: f32) -> Obstacle {
+			// Update obstacles
+			{
 				templates := OBSTACLE_TEMPLATES;
-				template  := templates[tag];
 				
-				obstacle  := Obstacle { tag = tag };
-				small_array.push_back_elems(&obstacle.hitboxes, ..template.hitboxes);
-				
-				if current_speed >= template.min_trex_run_speed_for_multiple_spawn {
-					obstacle.length = cast(f32)rand.int32_range(1, MAX_COMPOUND_OBSTACLE_LENGTH + 1);
-				} else {
-					obstacle.length = 1;
+				compute_delta :: proc(trex_run_speed: f32, obstacle_speed_offset: f32, dt: f32) -> f32 {
+					speed := trex_run_speed + obstacle_speed_offset;
+					delta := speed * TARGET_FPS * dt;
+					return delta;
 				}
 				
-				obstacle_width := get_obstacle_width(obstacle);
-				
-				DO_UGLY_BUT_FAITHFUL_POP_IN :: false;
-				
-				when DO_UGLY_BUT_FAITHFUL_POP_IN {
-					obstacle.world_position.x = horizon_w - obstacle_width;
-				} else {
-					obstacle.world_position.x = horizon_w;
-				}
-				
-				obstacle.world_position.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
-				
-				#no_bounds_check if obstacle.length > 1 {
-					#assert(len(obstacle.hitboxes.data) >= 3);
-					b := small_array.slice(&obstacle.hitboxes);
+				passed_obstacles: small_array.Small_Array(len(obstacles.data), int);
+				for obstacle_index := 0; obstacle_index < small_array.len(obstacles); obstacle_index += 1 {
+					obstacle := small_array.get_ptr(&obstacles, obstacle_index);
+					obstacle.world_position.x -= compute_delta(trex.run_speed, obstacle.speed_offset, dt);
 					
-					// NOTE(ema): When the obstacle is a compound obstacle, make adjustments to the
-					// collision boxes so that they cover the entire width.
-					b[1].width = obstacle_width - b[0].width - b[2].width; // Make the middle one wider
-					b[2].x = obstacle_width - b[2].width;                  // Shift the last one to the right
-				}
-				
-				obstacle.speed_offset = template.speed_offset * (rand.float32() < 0.5 ? -1 : +1);
-				
-				{
-					min_gap := obstacle_width * current_speed + template.min_gap * MIN_OBSTACLE_GAP_COEFFICIENT;
-					max_gap := min_gap * MAX_OBSTACLE_GAP_COEFFICIENT;
-					obstacle.gap = rand.float32_range(min_gap, max_gap);
-				}
-				
-				obstacle.seconds_since_anim_frame_changed = 0;
-				obstacle.anim_frames_per_second = template.anim_frames_per_second;
-				obstacle.current_anim_frame = 0;
-				
-				when ODIN_DEBUG {
-					debug_colors := []raylib.Color {
-						raylib.RED, raylib.ORANGE, raylib.GREEN, raylib.SKYBLUE, raylib.PURPLE
-					};
-					@(static) debug_color_index := 0;
+					obstacle.seconds_since_anim_frame_changed += dt;
+					if obstacle.seconds_since_anim_frame_changed > obstacle.anim_frames_per_second {
+						obstacle.current_anim_frame += 1;
+						if obstacle.current_anim_frame == templates[obstacle.tag].num_anim_frames {
+							obstacle.current_anim_frame = 0;
+						}
+						
+						obstacle.seconds_since_anim_frame_changed = 0;
+					}
 					
-					obstacle.color = debug_colors[debug_color_index];
-					debug_color_index = (debug_color_index + 1) % len(debug_colors);
+					is_visible_or_to_the_right := obstacle.world_position.x + get_obstacle_width(obstacle^) > 0;
+					if !is_visible_or_to_the_right {
+						small_array.push_back(&passed_obstacles, obstacle_index);
+					}
 				}
 				
-				return obstacle;
+				ordered_remove_elems(&obstacles, small_array.slice(&passed_obstacles));
+				
+				add_obstacle := false;
+				if small_array.len(obstacles) > 0 {
+					last := small_array.get(obstacles, small_array.len(obstacles) - 1);
+					if small_array.space(obstacles) > 0 && last.world_position.x + get_obstacle_width(last) + last.gap < WINDOW_W {
+						add_obstacle = true;
+					}
+				} else {
+					add_obstacle = true;
+				}
+				
+				if add_obstacle {
+					obstacle := make_obstacle(small_array.slice(&obstacle_history), trex.run_speed, x = WINDOW_W);
+					
+					small_array.push_back(&obstacles, obstacle);
+					force_push_front(&obstacle_history, obstacle.tag);
+				}
 			}
 			
 			// check collisions
 			{
 				hit := false;
-				obstacle_loop: for &obstacle in small_array.slice(&obstacle_buffer) {
+				obstacle_loop: for &obstacle in small_array.slice(&obstacles) {
 					for obstacle_hitbox in small_array.slice(&obstacle.hitboxes) {
 						rectA := shift_rect(obstacle_hitbox, obstacle.world_position);
 						for trex_hitbox in trex.hitboxes {
@@ -1008,7 +1009,7 @@ main :: proc() {
 		// Draw obstacles
 		{
 			obstacle_sprite_rects := OBSTACLE_SPRITE_RECTS;
-			for o in small_array.slice(&obstacle_buffer) {
+			for o in small_array.slice(&obstacles) {
 				offsets := OBSTACLE_SPRITE_OFFSETS;
 				offset  := offsets[o.tag];
 				
@@ -1150,7 +1151,7 @@ main :: proc() {
 					raylib.DrawRectangleLinesEx(shifted, 1, raylib.RED);
 				}
 				
-				for &o in small_array.slice(&obstacle_buffer) {
+				for &o in small_array.slice(&obstacles) {
 					for b in small_array.slice(&o.hitboxes) {
 						shifted := shift_rect(b, o.world_position);
 						raylib.DrawRectangleLinesEx(shifted, 1, o.color);
@@ -1201,13 +1202,13 @@ main :: proc() {
 				global_debug_text_x += text_x + text_w;
 			}
 			
-			if .Obstacle_Buffer in debug_draw_flags {
+			if .Obstacles in debug_draw_flags {
 				font_size := i32(10);
 				text_y := i32(10);
 				text_x := i32(10);
 				text_x += MeasureAndDrawText("[", global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
-				for i in 0..<small_array.cap(obstacle_buffer) {
-					o, exists := small_array.get_safe(obstacle_buffer, i);
+				for i in 0..<small_array.cap(obstacles) {
+					o, exists := small_array.get_safe(obstacles, i);
 					s: cstring;
 					if exists {
 						s = strings.clone_to_cstring(fmt.tprintf("%v", o.gap), context.temp_allocator);
@@ -1215,7 +1216,7 @@ main :: proc() {
 						s = "-";
 					}
 					text_x += MeasureAndDrawText(s, global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
-					if i + 1 < small_array.cap(obstacle_buffer) {
+					if i + 1 < small_array.cap(obstacles) {
 						text_x += MeasureAndDrawText(", ", global_debug_text_x + text_x, text_y, font_size, raylib.BLACK);
 					}
 				}
