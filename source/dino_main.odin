@@ -4,7 +4,6 @@ package dino
 // TODO(ema): Review all uses of framerate
 // TODO(ema): SetProcessWorkingSetSizeEx
 // TODO(ema): Don't embed the larger texture
-// TODO(ema): build_release.bat/.sh
 // TODO(ema): Update Odin compiler and change os2 to os
 // TODO(ema): Update README
 
