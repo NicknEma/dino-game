@@ -981,7 +981,7 @@ main :: proc() {
 		
 		// Draw horizon line (ground)
 		for section in ground_sections {
-			pos := [2]f32 {section.screen_x, GROUND_Y};
+			pos := [2]f32 { math.round(section.screen_x), GROUND_Y };
 			rec := raylib.Rectangle {
 				section.sprite_x, SPRITE_COORDINATES.horizon.y,
 				GROUND_SECTION_W, GROUND_H
