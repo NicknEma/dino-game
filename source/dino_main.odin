@@ -355,6 +355,13 @@ main :: proc() {
 	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
 	obstacles: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
 	
+	get_obstacle_width :: proc(o: Obstacle) -> f32 {
+		templates := OBSTACLE_TEMPLATES;
+		template  := templates[o.tag];
+		
+		return template.width * o.length;
+	}
+	
 	make_obstacle :: proc(history: []Obstacle_Tag, trex_run_speed: f32, x: f32, gen_tag := context.random_generator) -> Obstacle {
 		TAG_WEIGHTS :: [len(Obstacle_Tag)]int {
 			Obstacle_Tag.Cactus_Small = 1,
@@ -1202,16 +1209,6 @@ main :: proc() {
 		time_since_attempt_start += dt;
 		time_since_startup += dt;
 	}
-}
-
-////////////////////////////////
-// Game-specific utils
-
-get_obstacle_width :: proc(o: Obstacle) -> f32 {
-	templates := OBSTACLE_TEMPLATES;
-	template  := templates[o.tag];
-	
-	return template.width * o.length;
 }
 
 ////////////////////////////////
