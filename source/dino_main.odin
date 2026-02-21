@@ -86,7 +86,7 @@ Sprite_Coordinates :: struct {
 // TODO(ema): Implement CLEAR_TIME
 
 TREX_START_POSITION_X :: 50;
-TREX_START_POSITION_Y :: WINDOW_H - BOTTOM_PAD - SPRITE_1X_TREX_HEIGHT_NORMAL;
+TREX_START_POSITION_Y :: WINDOW_H - BOTTOM_PAD - TREX_H_NORMAL;
 
 TREX_INITIAL_RUN_SPEED :: 6;
 TREX_MAX_RUN_SPEED     :: 13;
@@ -125,41 +125,40 @@ Trex :: struct {
 
 @(rodata)
 trex_status_anim_frames_per_ms := [Trex_Status]int {
-	.Running = 12,
-	.Waiting =  3,
-	.Crashed = 60,
-	.Jumping = 60,
-	.Ducking =  8,
+	.Running = 12, .Waiting =  3, .Crashed = 60,
+	.Jumping = 60, .Ducking =  8
 }
 
-SPRITE_1X_TREX_WIDTH_NORMAL  ::  44
-SPRITE_1X_TREX_HEIGHT_NORMAL ::  47
-SPRITE_1X_TREX_WIDTH_DUCK    ::  59
-// SPRITE_1X_TREX_HEIGHT_DUCK   ::  25
-// SPRITE_1X_TREX_WIDTH_TOTAL   :: 262
+TREX_W_NORMAL ::  44;
+TREX_H_NORMAL ::  47;
+TREX_W_DUCK   ::  59;
+// TREX_H_DUCK   ::  25; // Unused
+// TREX_W_TOTAL  :: 262; // Unused
 
 // NOTE(ema): From the top-left corner of the entity sub-sprite
-SPRITE_1X_TREX_RECTS :: [Trex_Status][]raylib.Rectangle {
+@(rodata)
+trex_sprite_recs := [Trex_Status][]raylib.Rectangle {
 	.Waiting = {
-		{  0,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
-		{ 44,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
+		{  0,  0, TREX_W_NORMAL, TREX_H_NORMAL},
+		{ 44,  0, TREX_W_NORMAL, TREX_H_NORMAL}
 	},
 	.Running = {
-		{ 88,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL},
-		{132,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
-	},
-	.Ducking = {
-		// NOTE(ema): Pretend that the ducking sprite has the same height as the others,
-		// avoid the whole update-y-based-on-status shenanigans (and the bugs that
-		// come along with them). Use HEIGHT_NORMAL.
-		{262, 0, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_NORMAL},
-		{321, 0, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_NORMAL}
+		{ 88,  0, TREX_W_NORMAL, TREX_H_NORMAL},
+		{132,  0, TREX_W_NORMAL, TREX_H_NORMAL}
 	},
 	.Jumping = {
-		{  0,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
+		{  0,  0, TREX_W_NORMAL, TREX_H_NORMAL}
 	},
 	.Crashed = {
-		{220,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
+		{220,  0, TREX_W_NORMAL, TREX_H_NORMAL}
+	},
+	
+	// NOTE(ema): Pretend that the ducking sprite has the same height as the others,
+	// avoid the whole update-y-based-on-status shenanigans (and the bugs that
+	// come along with them). Use H_NORMAL.
+	.Ducking = {
+		{262,  0, TREX_W_DUCK,   TREX_H_NORMAL},
+		{321,  0, TREX_W_DUCK,   TREX_H_NORMAL}
 	},
 }
 
@@ -327,14 +326,7 @@ write_sound_assets_to_disk :: proc() {
 }
 
 main :: proc() {
-	double_resolution := false;
-	
-	sprite_trex_rects := SPRITE_1X_TREX_RECTS;
-	if double_resolution {
-		for status in sprite_trex_rects {
-			for &rec in status do rec = double_rect(rec);
-		}
-	}
+	double_resolution := false; // TODO(ema): Remove
 	
 	raylib.SetTraceLogLevel(.ERROR);
 	raylib.InitWindow(WINDOW_W, WINDOW_H, "A window");
@@ -973,7 +965,7 @@ main :: proc() {
 				anim_frames_per_ms := cast(f32)trex_status_anim_frames_per_ms[trex.status];
 				anim_ms_per_frame  := 1.0 / anim_frames_per_ms;
 				if trex.anim_timer >= anim_ms_per_frame {
-					trex.anim_frame_index = (trex.anim_frame_index == cast(i32)len(sprite_trex_rects[trex.status]) - 1) ? 0 : (trex.anim_frame_index + 1);
+					trex.anim_frame_index = (trex.anim_frame_index == cast(i32)len(trex_sprite_recs[trex.status]) - 1) ? 0 : (trex.anim_frame_index + 1);
 					trex.anim_timer = 0;
 				}
 			}
@@ -1029,10 +1021,10 @@ main :: proc() {
 		
 		// Draw trex
 		{
-			trex_sprite_rect := sprite_trex_rects[trex.status][trex.anim_frame_index];
-			trex_sprite_rect  = shift_rect(trex_sprite_rect, SPRITE_COORDINATES.trex);
+			rec := trex_sprite_recs[trex.status][trex.anim_frame_index];
+			rec  = shift_rect(rec, SPRITE_COORDINATES.trex);
 			
-			raylib.DrawTextureRec(sprite_tex, trex_sprite_rect, trex.screen_pos, raylib.WHITE);
+			raylib.DrawTextureRec(sprite_tex, rec, trex.screen_pos, raylib.WHITE);
 		}
 		
 		// Draw score
