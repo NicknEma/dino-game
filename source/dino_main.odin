@@ -1,6 +1,5 @@
 package dino
 
-// TODO(ema): Review all casts
 // TODO(ema): Review all uses of framerate
 // TODO(ema): Review all drawing sites for possible math.round() calls
 
@@ -20,12 +19,10 @@ import "core:encoding/base64"
 import "vendor:raylib"
 
 TARGET_FPS :: 60
-MS_PER_FRAME :: 1000 / TARGET_FPS
+// MS_PER_FRAME :: 1000 / TARGET_FPS // Unused
 
 WINDOW_W :: 600
 WINDOW_H :: 150
-
-BOTTOM_PAD :: 10;
 
 BG_COLOR_DAY :: 0xF7F7F7FF
 
@@ -87,7 +84,7 @@ Sprite_Coordinates :: struct {
 // TODO(ema): Better names for: drop velocity, drop coef (?); speed drop
 
 TREX_START_POSITION_X :: 50.0;
-TREX_START_POSITION_Y :: WINDOW_H - BOTTOM_PAD - TREX_H_NORMAL;
+TREX_START_POSITION_Y :: WINDOW_H - TREX_H_NORMAL - 10;
 
 TREX_INITIAL_RUN_SPEED ::  6.0;
 TREX_MAX_RUN_SPEED     :: 13.0;
@@ -550,7 +547,6 @@ main :: proc() {
 	////////////////////////////////
 	// Other variables
 	
-	// Attempt info
 	frame_count_since_attempt_start := 0;
 	time_since_attempt_start := f32(0);
 	time_since_startup := f32(0);
@@ -1136,7 +1132,6 @@ main :: proc() {
 				}
 				
 				variables := [?]string {
-					fmt.tprintf("%v: %v", name_of(MS_PER_FRAME), MS_PER_FRAME),
 					fmt.tprintf("%v: %v", name_of(trex.status), trex.status),
 					fmt.tprintf("%v: %v", name_of(trex.run_speed), trex.run_speed),
 					fmt.tprintf("%v: %v", name_of(trex.waiting_anim_start_time), trex.waiting_anim_start_time),
