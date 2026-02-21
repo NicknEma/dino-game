@@ -563,6 +563,7 @@ main :: proc() {
 			Obstacles
 		}
 		
+		debug_draw_flags := bit_set[Debug_Draw_Flag] { };
 	}
 	
 	////////////////////////////////
