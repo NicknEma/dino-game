@@ -2,6 +2,12 @@ package dino
 
 // TODO(ema): Day-night cycle
 // TODO(ema): Review all uses of framerate
+// TODO(ema): SetProcessWorkingSetSizeEx
+// TODO(ema): Exe icon & window icon
+// TODO(ema): Window title
+// TODO(ema): Don't embed the larger texture
+// TODO(ema): build_release.bat/.sh
+// TODO(ema): Update Odin compiler and change os2 to os
 
 import "base:runtime"
 import "base:intrinsics"
