@@ -492,10 +492,10 @@ main :: proc() {
 	
 	METER_DEFAULT_DIGIT_COUNT  :: 5;
 	
-	METER_ACHIEVEMENT_DISTANCE :: 100;
+	METER_ACHIEVEMENT_DISTANCE :: 100.0;
 	METER_INTERNAL_TO_DISPLAY_COEFFICIENT :: 0.025;
 	
-	METER_FLASH_DURATION   :: 1000 / 4;
+	METER_FLASH_DURATION   :: 1000.0 / 4.0;
 	METER_FLASH_ITERATIONS :: 3;
 	
 	METER_CHAR_W :: 10;
@@ -639,6 +639,12 @@ main :: proc() {
 					trex_status_changed = true;
 					
 					attempt_count += 1;
+					trex.distance_ran = 0.0;
+					trex.screen_pos.x = TREX_START_POSITION_X;
+					trex.screen_pos.y = TREX_START_POSITION_Y;
+					trex.run_speed  = TREX_INITIAL_RUN_SPEED;
+					
+					trex_jump_count = 0;
 					
 					meter.score = 0;
 					meter.digit_count = METER_DEFAULT_DIGIT_COUNT;
@@ -648,13 +654,6 @@ main :: proc() {
 					if meter.high_digit_count < METER_DEFAULT_DIGIT_COUNT {
 						meter.high_digit_count = METER_DEFAULT_DIGIT_COUNT;
 					}
-					
-					trex.distance_ran = 0;
-					trex.run_speed = TREX_INITIAL_RUN_SPEED;
-					trex.screen_pos.x = TREX_START_POSITION_X;
-					trex.screen_pos.y = TREX_START_POSITION_Y;
-					
-					trex_jump_count = 0;
 					
 					small_array.clear(&obstacle_history);
 					small_array.clear(&obstacles);
