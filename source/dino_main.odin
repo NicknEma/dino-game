@@ -638,7 +638,6 @@ main :: proc() {
 					trex.status = .Running;
 					trex_status_changed = true;
 					
-					attempt_count += 1;
 					trex.distance_ran = 0.0;
 					trex.screen_pos.x = TREX_START_POSITION_X;
 					trex.screen_pos.y = TREX_START_POSITION_Y;
@@ -657,12 +656,17 @@ main :: proc() {
 					
 					small_array.clear(&obstacle_history);
 					small_array.clear(&obstacles);
-					init_ground(ground_sections[:]);
+					
 					small_array.clear(&clouds);
 					small_array.push_back(&clouds, make_cloud(x = WINDOW_W));
 					
+					if attempt_count > 0 {
+						init_ground(ground_sections[:]);
+					}
+					
 					frame_count_since_attempt_start = 0;
 					time_since_attempt_start = 0;
+					attempt_count += 1;
 				}
 			} else {
 				// if playing intro, play intro, else:
