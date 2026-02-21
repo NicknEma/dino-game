@@ -87,21 +87,21 @@ Sprite_Coordinates :: struct {
 // TODO(ema): Better names for: drop velocity, drop coef (?); speed drop
 // TODO(ema): Implement CLEAR_TIME
 
-TREX_START_POSITION_X :: 50;
+TREX_START_POSITION_X :: 50.0;
 TREX_START_POSITION_Y :: WINDOW_H - BOTTOM_PAD - TREX_H_NORMAL;
 
-TREX_INITIAL_RUN_SPEED :: 6;
-TREX_MAX_RUN_SPEED     :: 13;
-TREX_RUN_ACCELERATION  :: 0.001;
+TREX_INITIAL_RUN_SPEED ::  6.0;
+TREX_MAX_RUN_SPEED     :: 13.0;
+TREX_RUN_ACCELERATION  ::  0.001;
 
-TREX_MAX_JUMP_HEIGHT :: 30;
-TREX_MIN_JUMP_HEIGHT :: 30;
-TREX_DROP_VELOCITY :: -5;
+TREX_MAX_JUMP_HEIGHT :: 30.0;
+TREX_MIN_JUMP_HEIGHT :: 30.0;
+TREX_DROP_VELOCITY :: -5.0;
 TREX_GRAVITY :: 0.6;
-TREX_SPEED_DROP_COEFFICIENT :: 3;
+TREX_SPEED_DROP_COEFFICIENT :: 3.0;
 TREX_START_JUMP_VELOCITY :: -10;
 
-TREX_WAITING_ANIM_BLINK_TIMING :: 7000;
+TREX_WAITING_ANIM_BLINK_TIMING :: 7000.0;
 
 Trex_Status :: enum {
 	Waiting, Running, Ducking, Jumping, Crashed
@@ -199,9 +199,9 @@ Obstacle_Template :: struct {
 	min_gap: f32,
 	min_trex_run_speed_for_single_spawn: f32,
 	min_trex_run_speed_for_multiple_spawn: f32,
-	speed_offset: f32, // The speed of the obstacle itself, to be added to the trex run speed
+	speed_offset: f32, // NOTE(ema): The speed of the obstacle itself, to be added to the trex run speed
 	
-	anim_frames_per_second: f32, // Animation framerate
+	anim_frames_per_second: f32, // NOTE(ema): Animation framerate
 	num_anim_frames: i32,
 }
 
@@ -253,7 +253,7 @@ Obstacle :: struct {
 	tag: Obstacle_Tag,
 	
 	hitboxes: small_array.Small_Array(5, raylib.Rectangle),
-	world_position: [2]f32,
+	screen_pos: [2]f32,
 	speed_offset: f32,
 	length: f32, // NOTE(ema): Stored as a f32 for convenience, but it's really an integer
 	gap: f32,
@@ -272,26 +272,6 @@ when ODIN_DEBUG {
 } else {
 	Obstacle_Debug :: struct {}
 }
-
-////////////////////////////////
-// Score text constants
-
-METER_CHAR_W :: 10;
-METER_CHAR_H :: 13;
-
-METER_CHAR_SPACE :: 1; // NOTE(ema): Space between chars on screen
-
-////////////////////////////////
-// Game over text constants
-
-GAME_OVER_TEXT_W :: 191;
-GAME_OVER_TEXT_H ::  11;
-
-////////////////////////////////
-// Restart icon constants
-
-RESTART_ICON_W :: 36;
-RESTART_ICON_H :: 32;
 
 ////////////////////////////////
 // Game code
@@ -401,12 +381,12 @@ main :: proc() {
 		DO_UGLY_BUT_FAITHFUL_POP_IN :: false;
 		
 		when DO_UGLY_BUT_FAITHFUL_POP_IN {
-			obstacle.world_position.x = WINDOW_W - obstacle_width;
+			obstacle.screen_pos.x = WINDOW_W - obstacle_width;
 		} else {
-			obstacle.world_position.x = WINDOW_W;
+			obstacle.screen_pos.x = WINDOW_W;
 		}
 		
-		obstacle.world_position.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
+		obstacle.screen_pos.y = template.possible_y_positions[int32_range_clamped(0, cast(i32)len(template.possible_y_positions) - 1)];
 		
 		#no_bounds_check if obstacle.length > 1 {
 			#assert(len(obstacle.hitboxes.data) >= 3);
@@ -517,6 +497,11 @@ main :: proc() {
 	METER_FLASH_DURATION   :: 1000 / 4;
 	METER_FLASH_ITERATIONS :: 3;
 	
+	METER_CHAR_W :: 10;
+	METER_CHAR_H :: 13;
+	
+	METER_CHAR_SPACE :: 1; // NOTE(ema): Space between chars on screen
+	
 	Meter :: struct {
 		up_to_date_score: i32,
 		score: i32,
@@ -534,6 +519,12 @@ main :: proc() {
 	
 	////////////////////////////////
 	// Game-over screen variables
+	
+	GAME_OVER_TEXT_W :: 191;
+	GAME_OVER_TEXT_H ::  11;
+	
+	RESTART_ICON_W :: 36;
+	RESTART_ICON_H :: 32;
 	
 	game_over_text_rec := raylib.Rectangle {
 		SPRITE_COORDINATES.game_over.x, SPRITE_COORDINATES.game_over.y,
@@ -766,9 +757,8 @@ main :: proc() {
 			}
 		}
 		
-		// Simulate rest of the world
+		// Update rest of the world
 		if trex.status != .Waiting && trex.status != .Crashed {
-			
 			// Update horizon line (ground)
 			{
 				delta := trex.run_speed * TARGET_FPS * dt;
@@ -785,7 +775,7 @@ main :: proc() {
 			
 			// Update clouds
 			{
-				delta := CLOUD_SPEED * TARGET_FPS * dt * trex.run_speed;
+				delta := trex.run_speed * CLOUD_SPEED * TARGET_FPS * dt;
 				
 				passed_clouds: small_array.Small_Array(len(clouds.data), int);
 				for cloud_index := 0; cloud_index < small_array.len(clouds); cloud_index += 1 {
@@ -828,7 +818,7 @@ main :: proc() {
 				passed_obstacles: small_array.Small_Array(len(obstacles.data), int);
 				for obstacle_index := 0; obstacle_index < small_array.len(obstacles); obstacle_index += 1 {
 					obstacle := small_array.get_ptr(&obstacles, obstacle_index);
-					obstacle.world_position.x -= compute_delta(trex.run_speed, obstacle.speed_offset, dt);
+					obstacle.screen_pos.x -= compute_delta(trex.run_speed, obstacle.speed_offset, dt);
 					
 					obstacle.seconds_since_anim_frame_changed += dt;
 					if obstacle.seconds_since_anim_frame_changed > obstacle.anim_frames_per_second {
@@ -840,7 +830,7 @@ main :: proc() {
 						obstacle.seconds_since_anim_frame_changed = 0;
 					}
 					
-					is_visible_or_to_the_right := obstacle.world_position.x + get_obstacle_width(obstacle^) > 0;
+					is_visible_or_to_the_right := obstacle.screen_pos.x + get_obstacle_width(obstacle^) > 0;
 					if !is_visible_or_to_the_right {
 						small_array.push_back(&passed_obstacles, obstacle_index);
 					}
@@ -851,7 +841,7 @@ main :: proc() {
 				add_obstacle := false;
 				if small_array.len(obstacles) > 0 {
 					last := small_array.get(obstacles, small_array.len(obstacles) - 1);
-					if small_array.space(obstacles) > 0 && last.world_position.x + get_obstacle_width(last) + last.gap < WINDOW_W {
+					if small_array.space(obstacles) > 0 && last.screen_pos.x + get_obstacle_width(last) + last.gap < WINDOW_W {
 						add_obstacle = true;
 					}
 				} else {
@@ -866,15 +856,15 @@ main :: proc() {
 				}
 			}
 			
-			// check collisions
+			// Check collisions
 			{
 				hit := false;
 				obstacle_loop: for &obstacle in small_array.slice(&obstacles) {
 					for obstacle_hitbox in small_array.slice(&obstacle.hitboxes) {
-						rectA := shift_rect(obstacle_hitbox, obstacle.world_position);
+						obstacle_rect := shift_rect(obstacle_hitbox, obstacle.screen_pos);
 						for trex_hitbox in trex.hitboxes {
-							rectB := shift_rect(trex_hitbox, trex.screen_pos);
-							hit = raylib.CheckCollisionRecs(rectA, rectB);
+							trex_rect := shift_rect(trex_hitbox, trex.screen_pos);
+							hit = raylib.CheckCollisionRecs(obstacle_rect, trex_rect);
 							if hit {
 								break obstacle_loop;
 							}
@@ -1010,7 +1000,7 @@ main :: proc() {
 				offset  := offsets[obstacle.tag];
 				
 				rec := shift_rect(obstacle_sprite_rects[obstacle.tag], offset);
-				pos := obstacle.world_position;
+				pos := obstacle.screen_pos;
 				
 				// Here we have to map the length to the offset like this:
 				//  1 -> 0 * width
@@ -1067,7 +1057,7 @@ main :: proc() {
 				5.0
 			};
 			
-			if meter_should_draw {
+			if meter_is_visible {
 				draw_meter(meter.score, meter.digit_count, nil, sprite_tex, digit_base_rec, digit_base_pos,
 						   METER_CHAR_W, METER_CHAR_W + METER_CHAR_SPACE, raylib.WHITE);
 			}
@@ -1122,13 +1112,13 @@ main :: proc() {
 				
 				for &o in small_array.slice(&obstacles) {
 					for b in small_array.slice(&o.hitboxes) {
-						shifted := shift_rect(b, o.world_position);
+						shifted := shift_rect(b, o.screen_pos);
 						raylib.DrawRectangleLinesEx(shifted, 1, o.color);
 					}
 					
-					gap_start := o.world_position.x + get_obstacle_width(o);
+					gap_start := o.screen_pos.x + get_obstacle_width(o);
 					gap_end := gap_start + o.gap;
-					gap_y := o.world_position.y;
+					gap_y := o.screen_pos.y;
 					raylib.DrawLineV({gap_start, gap_y}, {gap_end, gap_y},
 									 o.color);
 				}
