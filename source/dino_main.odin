@@ -1,7 +1,6 @@
 package dino
 
 // TODO(ema): Review all uses of framerate
-// TODO(ema): Review all drawing sites for possible math.round() calls
 
 import "base:runtime"
 import "base:intrinsics"
