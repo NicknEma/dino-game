@@ -85,7 +85,8 @@ Sprite_Coordinates :: struct {
 // TODO(ema): Better names for: drop velocity, drop coef (?); speed drop
 // TODO(ema): Implement CLEAR_TIME
 
-TREX_SCREEN_POSITION_X :: 50; // TODO(ema): This should double for graphics but stay the same for simulation
+TREX_START_POSITION_X :: 50;
+TREX_START_POSITION_Y :: WINDOW_H - BOTTOM_PAD - SPRITE_1X_TREX_HEIGHT_NORMAL;
 
 TREX_INITIAL_RUN_SPEED :: 6;
 TREX_MAX_RUN_SPEED     :: 13;
@@ -134,8 +135,8 @@ trex_status_anim_frames_per_ms := [Trex_Status]int {
 SPRITE_1X_TREX_WIDTH_NORMAL  ::  44
 SPRITE_1X_TREX_HEIGHT_NORMAL ::  47
 SPRITE_1X_TREX_WIDTH_DUCK    ::  59
-SPRITE_1X_TREX_HEIGHT_DUCK   ::  25
-SPRITE_1X_TREX_WIDTH_TOTAL   :: 262
+// SPRITE_1X_TREX_HEIGHT_DUCK   ::  25
+// SPRITE_1X_TREX_WIDTH_TOTAL   :: 262
 
 // NOTE(ema): From the top-left corner of the entity sub-sprite
 SPRITE_1X_TREX_RECTS :: [Trex_Status][]raylib.Rectangle {
@@ -148,8 +149,11 @@ SPRITE_1X_TREX_RECTS :: [Trex_Status][]raylib.Rectangle {
 		{132,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
 	},
 	.Ducking = {
-		{262, 17, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_DUCK},
-		{321, 17, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_DUCK}
+		// NOTE(ema): Pretend that the ducking sprite has the same height as the others,
+		// avoid the whole update-y-based-on-status shenanigans (and the bugs that
+		// come along with them). Use HEIGHT_NORMAL.
+		{262, 0, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_NORMAL},
+		{321, 0, SPRITE_1X_TREX_WIDTH_DUCK,   SPRITE_1X_TREX_HEIGHT_NORMAL}
 	},
 	.Jumping = {
 		{  0,  0, SPRITE_1X_TREX_WIDTH_NORMAL, SPRITE_1X_TREX_HEIGHT_NORMAL}
@@ -373,33 +377,16 @@ main :: proc() {
 	sprite_img := raylib.LoadImageFromMemory(".png", raw_data(sprite_mem), cast(i32)len(sprite_mem));
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
-	BOTTOM_PAD :: 10;
-	bottom_pad := i32(BOTTOM_PAD);
-	if double_resolution {
-		bottom_pad *= 2;
-	}
-	
 	////////////////////////////////
 	// Trex variables
-	
-	trex_screen_position_x := f32(TREX_SCREEN_POSITION_X);
-	if double_resolution {
-		trex_screen_position_x *= 2;
-	}
-	
-	trex_h_normal := f32(SPRITE_1X_TREX_HEIGHT_NORMAL);
-	trex_h_duck := f32(SPRITE_1X_TREX_HEIGHT_DUCK);
-	
-	trex_ground_y_normal := f32(WINDOW_H - BOTTOM_PAD) - trex_h_normal;
-	trex_ground_y_duck := f32(WINDOW_H - BOTTOM_PAD) - trex_h_duck;
 	
 	trex: Trex;
 	trex.status = .Waiting;
 	
-	trex.screen_pos.x = trex_screen_position_x;
-	trex.screen_pos.y = trex_ground_y_normal;
+	trex.screen_pos.x = TREX_START_POSITION_X;
+	trex.screen_pos.y = TREX_START_POSITION_Y;
 	
-	trex_min_jump_height := f32(trex_ground_y_normal - TREX_MIN_JUMP_HEIGHT);
+	trex_min_jump_height := f32(TREX_START_POSITION_Y - TREX_MIN_JUMP_HEIGHT); // TODO(ema): What? Rename vars, this is confusing
 	trex_jump_count: int;
 	
 	////////////////////////////////
@@ -558,13 +545,14 @@ main :: proc() {
 		}
 		
 		// Simulate trex
+		// TODO(ema): Add 1 frame of cooldown between crash and the ability to start a new game
 		trex_prev_status := trex.status;
 		for trex_prevent_jump := false; true; {
 			trex_status_changed := false;
 			
 			if trex.status == .Waiting || trex.status == .Crashed {
-				
 				should_start := false;
+				
 				if trex.status == .Waiting {
 					if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
 						should_start = true;
@@ -597,8 +585,8 @@ main :: proc() {
 					
 					trex.distance_ran = 0;
 					trex.run_speed = TREX_INITIAL_RUN_SPEED;
-					trex.screen_pos.x = trex_screen_position_x;
-					trex.screen_pos.y = trex_ground_y_normal;
+					trex.screen_pos.x = TREX_START_POSITION_X;
+					trex.screen_pos.y = TREX_START_POSITION_Y;
 					
 					trex_jump_count = 0;
 					
@@ -614,12 +602,9 @@ main :: proc() {
 			} else {
 				// if playing intro, play intro, else:
 				
-				// TODO(ema): Maybe loop over this switch until prev status == status? so
-				// it doesn't feel like the inputs are happening 1 frame later
 				#partial switch trex.status {
 					case .Running: {
 						trex.hitboxes = trex_hitboxes_running[:];
-						trex.screen_pos.y = trex_ground_y_normal;
 						
 						if raylib.IsKeyDown(raylib.KeyboardKey.DOWN) {
 							trex.status = .Ducking;
@@ -641,7 +626,6 @@ main :: proc() {
 					
 					case .Ducking: {
 						trex.hitboxes = trex_hitboxes_ducking[:];
-						trex.screen_pos.y = trex_ground_y_duck;
 						
 						if raylib.IsKeyUp(raylib.KeyboardKey.DOWN) {
 							trex.status = .Running;
@@ -684,8 +668,8 @@ main :: proc() {
 							}
 						}
 						
-						if trex.screen_pos.y > trex_ground_y_normal {
-							trex.screen_pos.y = trex_ground_y_normal;
+						if trex.screen_pos.y > TREX_START_POSITION_Y {
+							trex.screen_pos.y = TREX_START_POSITION_Y;
 							trex.jump_velocity = 0;
 							trex.status = .Running;
 							trex_status_changed = true;
