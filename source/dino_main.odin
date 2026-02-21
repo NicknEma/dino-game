@@ -178,27 +178,6 @@ trex_hitboxes_ducking := [?]raylib.Rectangle {
 }
 
 ////////////////////////////////
-// Ground constants & types
-
-SPRITE_1X_GROUND_W :: 600 // NOTE(ema): The width of a ground *SECTION*
-SPRITE_1X_GROUND_H :: 12
-
-sprite_ground_x := SPRITE_1X_COORDINATES.horizon.x;
-sprite_ground_y := SPRITE_1X_COORDINATES.horizon.y;
-sprite_ground_w := f32(SPRITE_1X_GROUND_W);
-sprite_ground_h := f32(SPRITE_1X_GROUND_H);
-
-SCREEN_GROUND_X :: 0
-SCREEN_GROUND_Y :: 127 // TODO(ema): WINDOW_H(150) - BOTTOM_PAD(10) - GROUND_H(12) = 128... which one is right?
-SCREEN_GROUND_W :: WINDOW_W - 2*SCREEN_GROUND_X
-SCREEN_GROUND_H :: 12
-
-screen_ground_x := f32(SCREEN_GROUND_X);
-screen_ground_y := f32(SCREEN_GROUND_Y);
-screen_ground_w := f32(SCREEN_GROUND_W);
-screen_ground_h := f32(SCREEN_GROUND_H);
-
-////////////////////////////////
 // Obstacle constants & types
 
 // NOTE(ema): "Gap" means the amount of empty space following each obstacle before a new
@@ -355,11 +334,6 @@ main :: proc() {
 		for status in sprite_trex_rects {
 			for &rec in status do rec = double_rect(rec);
 		}
-		
-		sprite_ground_x, sprite_ground_y = SPRITE_2X_COORDINATES.horizon.x, SPRITE_2X_COORDINATES.horizon.y;
-		sprite_ground_w, sprite_ground_h = sprite_ground_w * 2, sprite_ground_h * 2;
-		screen_ground_x, screen_ground_y = screen_ground_x * 2, screen_ground_y * 2;
-		screen_ground_w, screen_ground_h = screen_ground_w * 2, screen_ground_h * 2;
 	}
 	
 	raylib.SetTraceLogLevel(.ERROR);
@@ -479,20 +453,28 @@ main :: proc() {
 	////////////////////////////////
 	// Ground variables
 	
+	GROUND_TOTAL_W        :: 1200;
+	GROUND_SECTION_W      :: WINDOW_W;
+	GROUND_SECTION_COUNT  :: GROUND_TOTAL_W / GROUND_SECTION_W;
+	
+	GROUND_BUMP_THRESHOLD :: 0.5;
+	
+	GROUND_Y :: 127;
+	GROUND_H ::  12;
+	
 	Ground_Section :: struct {
 		screen_x: f32,
 		sprite_x: f32,
 	}
 	
-	screen_ground_sections: [2]Ground_Section; // Coordinates on screen of where each sprite starts
-	ground_bump_threshold := f32(0.5);
+	ground_sections: [GROUND_SECTION_COUNT]Ground_Section; // Coordinates on screen of where each sprite starts
 	
-	{
-		screen_ground_sections[0].screen_x = screen_ground_x;
-		screen_ground_sections[1].screen_x = screen_ground_x + screen_ground_w;
-		
-		for &section in screen_ground_sections {
-			section.sprite_x = sprite_ground_x + (rand.float32() > ground_bump_threshold ? 0 : sprite_ground_w);
+	init_ground(ground_sections[:]);
+	
+	init_ground :: proc(ground_sections: []Ground_Section, gen_bump := context.random_generator) {
+		for &section, section_index in ground_sections {
+			section.screen_x = f32(section_index) * GROUND_SECTION_W;
+			section.sprite_x = SPRITE_COORDINATES.horizon.x + (rand.float32(gen_bump) > GROUND_BUMP_THRESHOLD ? 0 : GROUND_SECTION_W);
 		}
 	}
 	
@@ -685,7 +667,7 @@ main :: proc() {
 					
 					small_array.clear(&obstacle_history);
 					small_array.clear(&obstacles);
-					// TODO(ema): Reset ground
+					init_ground(ground_sections[:]);
 					small_array.clear(&clouds);
 					small_array.push_back(&clouds, make_cloud(x = WINDOW_W));
 					
@@ -791,11 +773,13 @@ main :: proc() {
 			// Update horizon line (ground)
 			{
 				delta := trex.run_speed * TARGET_FPS * dt;
-				for &section in screen_ground_sections {
+				
+				for &section in ground_sections {
 					section.screen_x -= delta;
-					if section.screen_x + screen_ground_w < 0 {
-						section.screen_x += 2*screen_ground_w;
-						section.sprite_x = sprite_ground_x + (rand.float32() > ground_bump_threshold ? 0 : sprite_ground_w);
+					
+					if section.screen_x + GROUND_SECTION_W < 0 {
+						section.screen_x += 2.0 * GROUND_SECTION_W;
+						section.sprite_x  = SPRITE_COORDINATES.horizon.x + (rand.float32() > GROUND_BUMP_THRESHOLD ? 0 : GROUND_SECTION_W);
 					}
 				}
 			}
@@ -1000,17 +984,15 @@ main :: proc() {
 		bg_color := raylib.GetColor(BG_COLOR_DAY);
 		raylib.ClearBackground(bg_color);
 		
-		// Draw ground
-		{
-			for section in screen_ground_sections {
-				pos := [2]f32 {section.screen_x, screen_ground_y};
-				rec := raylib.Rectangle {
-					section.sprite_x, sprite_ground_y,
-					sprite_ground_w, sprite_ground_h
-				};
-				
-				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
+		// Draw horizon line (ground)
+		for section in ground_sections {
+			pos := [2]f32 {section.screen_x, GROUND_Y};
+			rec := raylib.Rectangle {
+				section.sprite_x, SPRITE_COORDINATES.horizon.y,
+				GROUND_SECTION_W, GROUND_H
 			}
+			
+			raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
 		}
 		
 		// Draw clouds
