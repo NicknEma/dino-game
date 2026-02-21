@@ -3,7 +3,6 @@ package dino
 // TODO(ema): Day-night cycle
 // TODO(ema): Review all uses of framerate
 // TODO(ema): SetProcessWorkingSetSizeEx
-// TODO(ema): Exe icon & window icon
 // TODO(ema): Window title
 // TODO(ema): Don't embed the larger texture
 // TODO(ema): build_release.bat/.sh
@@ -321,6 +320,16 @@ main :: proc() {
 	sprite_mem := SPRITE;
 	sprite_img := raylib.LoadImageFromMemory(".png", raw_data(sprite_mem), cast(i32)len(sprite_mem));
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
+	
+	{
+		ICON :: #load("../assets/trex.jpg");
+		icon := raylib.LoadImageFromMemory(".jpg", raw_data(ICON), cast(i32)len(ICON));
+		if raylib.IsImageValid(icon) {
+			raylib.ImageFormat(&icon, .UNCOMPRESSED_R8G8B8A8);
+			raylib.SetWindowIcon(icon);
+			raylib.UnloadImage(icon);
+		}
+	}
 	
 	////////////////////////////////
 	// Trex variables
