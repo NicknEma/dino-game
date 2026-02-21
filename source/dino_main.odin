@@ -85,7 +85,6 @@ Sprite_Coordinates :: struct {
 // Trex constants & types
 
 // TODO(ema): Better names for: drop velocity, drop coef (?); speed drop
-// TODO(ema): Implement CLEAR_TIME
 
 TREX_START_POSITION_X :: 50.0;
 TREX_START_POSITION_Y :: WINDOW_H - BOTTOM_PAD - TREX_H_NORMAL;
@@ -187,9 +186,11 @@ trex_hitboxes_ducking := [?]raylib.Rectangle {
 MAX_OBSTACLES                :: 5;
 MAX_OBSTACLE_DUPLICATION     :: 2;
 MAX_COMPOUND_OBSTACLE_LENGTH :: 3;
+
 MIN_OBSTACLE_GAP_COEFFICIENT :: 0.6;
 MAX_OBSTACLE_GAP_COEFFICIENT :: 1.5;
-OBSTACLE_HISTORY_CAP :: MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag);
+
+TIME_BEFORE_FIRST_OBSTACLE   :: 3; // NOTE(ema): In seconds
 
 Obstacle_Tag :: enum { Cactus_Small, Cactus_Large, Pterodactyl }
 Obstacle_Template :: struct {
@@ -332,7 +333,7 @@ main :: proc() {
 	////////////////////////////////
 	// Obstacle variables
 	
-	obstacle_history: small_array.Small_Array(OBSTACLE_HISTORY_CAP, Obstacle_Tag);
+	obstacle_history: small_array.Small_Array(MAX_OBSTACLE_DUPLICATION * len(Obstacle_Tag), Obstacle_Tag);
 	obstacles: small_array.Small_Array(MAX_OBSTACLES, Obstacle);
 	
 	get_obstacle_width :: proc(o: Obstacle) -> f32 {
@@ -455,13 +456,13 @@ main :: proc() {
 	// Clouds variables
 	
 	MAX_CLOUD_GAP :: 400;
-	MAX_SKY_LEVEL :: 71;
+	MAX_SKY_LEVEL ::  71;
 	MIN_CLOUD_GAP :: 100;
-	MIN_SKY_LEVEL :: 30;
+	MIN_SKY_LEVEL ::  30;
+	MAX_CLOUDS    ::   6;
 	
 	CLOUD_FREQUENCY :: 0.5;
-	CLOUD_SPEED   :: 0.2;
-	MAX_CLOUDS    :: 6;
+	CLOUD_SPEED     :: 0.2;
 	
 	CLOUD_W :: 46;
 	CLOUD_H :: 14;
@@ -839,13 +840,15 @@ main :: proc() {
 				ordered_remove_elems(&obstacles, small_array.slice(&passed_obstacles));
 				
 				add_obstacle := false;
-				if small_array.len(obstacles) > 0 {
-					last := small_array.get(obstacles, small_array.len(obstacles) - 1);
-					if small_array.space(obstacles) > 0 && last.screen_pos.x + get_obstacle_width(last) + last.gap < WINDOW_W {
+				if time_since_attempt_start >= TIME_BEFORE_FIRST_OBSTACLE {
+					if small_array.len(obstacles) > 0 {
+						last := small_array.get(obstacles, small_array.len(obstacles) - 1);
+						if small_array.space(obstacles) > 0 && last.screen_pos.x + get_obstacle_width(last) + last.gap < WINDOW_W {
+							add_obstacle = true;
+						}
+					} else {
 						add_obstacle = true;
 					}
-				} else {
-					add_obstacle = true;
 				}
 				
 				if add_obstacle {
