@@ -3,7 +3,6 @@ package dino
 // TODO(ema): Day-night cycle
 // TODO(ema): Review all uses of framerate
 // TODO(ema): SetProcessWorkingSetSizeEx
-// TODO(ema): Window title
 // TODO(ema): Don't embed the larger texture
 // TODO(ema): build_release.bat/.sh
 // TODO(ema): Update Odin compiler and change os2 to os
@@ -307,7 +306,7 @@ write_sound_assets_to_disk :: proc() {
 
 main :: proc() {
 	raylib.SetTraceLogLevel(.ERROR);
-	raylib.InitWindow(WINDOW_W, WINDOW_H, "A window");
+	raylib.InitWindow(WINDOW_W, WINDOW_H, "You're offline");
 	raylib.SetExitKey(raylib.KeyboardKey.KEY_NULL);
 	raylib.SetTargetFPS(TARGET_FPS);
 	
