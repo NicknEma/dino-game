@@ -43,10 +43,12 @@ SPRITE_1X :: #load("../assets/offline-sprite-1x.png")
 SPRITE_2X :: #load("../assets/offline-sprite-2x.png")
 
 SPRITE_1X_COORDINATES :: Sprite_Coordinates {
-	cactus_large = {332, 2},
-	cactus_small = {228, 2},
+	obstacles = {
+		.Cactus_Small = {228, 2},
+		.Cactus_Large = {332, 2},
+		.Pterodactyl  = {134, 2}
+	},
 	restart_icon = {  2, 2},
-	pterodactyl  = {134, 2},
 	game_over = {484, 15},
 	horizon = { 2, 54},
 	cloud   = {86,  2},
@@ -55,10 +57,12 @@ SPRITE_1X_COORDINATES :: Sprite_Coordinates {
 }
 
 SPRITE_2X_COORDINATES :: Sprite_Coordinates {
-	cactus_large = {652, 2},
-	cactus_small = {446, 2},
+	obstacles = {
+		.Cactus_Small = {446, 2},
+		.Cactus_Large = {652, 2},
+		.Pterodactyl  = {260, 2}
+	},
 	restart_icon = {  2, 2},
-	pterodactyl  = {260, 2},
 	game_over = {954, 15},
 	horizon = {  2, 104},
 	cloud   = {166,   2},
@@ -68,10 +72,8 @@ SPRITE_2X_COORDINATES :: Sprite_Coordinates {
 
 // NOTE(ema): From the top-left corner of the image
 Sprite_Coordinates :: struct {
-	cactus_large: [2]f32,
-	cactus_small: [2]f32,
+	obstacles: [Obstacle_Tag][2]f32,
 	restart_icon: [2]f32,
-	pterodactyl:  [2]f32,
 	game_over: [2]f32,
 	horizon: [2]f32,
 	cloud:   [2]f32,
@@ -244,13 +246,6 @@ OBSTACLE_SPRITE_RECTS :: [Obstacle_Tag]raylib.Rectangle {
 	.Cactus_Small = {0, 0, 17, 35},
 	.Cactus_Large = {0, 0, 25, 50},
 	.Pterodactyl  = {0, 0, 46, 40},
-}
-
-// TODO(ema): This is essentially repeated information, just in a more convenient form. Remove duplicate
-OBSTACLE_SPRITE_OFFSETS :: [Obstacle_Tag][2]f32 {
-	.Cactus_Small = SPRITE_COORDINATES.cactus_small,
-	.Cactus_Large = SPRITE_COORDINATES.cactus_large,
-	.Pterodactyl  = SPRITE_COORDINATES.pterodactyl,
 }
 
 Obstacle :: struct {
@@ -1005,7 +1000,7 @@ main :: proc() {
 		{
 			obstacle_sprite_rects := OBSTACLE_SPRITE_RECTS;
 			for o in small_array.slice(&obstacles) {
-				offsets := OBSTACLE_SPRITE_OFFSETS;
+				offsets := SPRITE_COORDINATES.obstacles;
 				offset  := offsets[o.tag];
 				
 				rec := shift_rect(obstacle_sprite_rects[o.tag], offset);
