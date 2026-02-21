@@ -320,7 +320,7 @@ main :: proc() {
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
 	{
-		ICON :: #load("../assets/trex.jpg");
+		ICON :: #load("../assets/trex-icon.jpg");
 		icon := raylib.LoadImageFromMemory(".jpg", raw_data(ICON), cast(i32)len(ICON));
 		if raylib.IsImageValid(icon) {
 			raylib.ImageFormat(&icon, .UNCOMPRESSED_R8G8B8A8);
