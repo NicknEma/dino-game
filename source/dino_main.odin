@@ -943,37 +943,37 @@ main :: proc() {
 				}
 			}
 		}
-	}
-	
-	// Animate trex
-	{
-		trex.anim_timer += dt;
 		
-		reset_blink :: proc(trex: ^Trex, time_since_startup: f32) {
-			trex.waiting_anim_start_time = time_since_startup;
-			trex.waiting_anim_blink_delay = rand.float32() * TREX_WAITING_ANIM_BLINK_TIMING;
-		}
-		
-		if trex_prev_status != trex.status {
-			trex.anim_frame_index = 0;
+		// Animate trex
+		{
+			trex.anim_timer += dt;
+			
+			reset_blink :: proc(trex: ^Trex, time_since_startup: f32) {
+				trex.waiting_anim_start_time = time_since_startup;
+				trex.waiting_anim_blink_delay = rand.float32() * TREX_WAITING_ANIM_BLINK_TIMING;
+			}
+			
+			if trex_prev_status != trex.status {
+				trex.anim_frame_index = 0;
+				
+				if trex.status == .Waiting {
+					reset_blink(&trex, time_since_startup);
+				}
+			}
 			
 			if trex.status == .Waiting {
-				reset_blink(&trex, time_since_startup);
-			}
-		}
-		
-		if trex.status == .Waiting {
-			trex.anim_frame_index = 0;
-			if time_since_startup - trex.waiting_anim_start_time >= trex.waiting_anim_blink_delay {
-				reset_blink(&trex, time_since_startup);
-				trex.anim_frame_index = 1;
-			}
-		} else {
-			anim_frames_per_ms := cast(f32)trex_status_anim_frames_per_ms[trex.status];
-			anim_ms_per_frame  := 1.0 / anim_frames_per_ms;
-			if trex.anim_timer >= anim_ms_per_frame {
-				trex.anim_frame_index = (trex.anim_frame_index == cast(i32)len(trex_sprite_recs[trex.status]) - 1) ? 0 : (trex.anim_frame_index + 1);
-				trex.anim_timer = 0;
+				trex.anim_frame_index = 0;
+				if time_since_startup - trex.waiting_anim_start_time >= trex.waiting_anim_blink_delay {
+					reset_blink(&trex, time_since_startup);
+					trex.anim_frame_index = 1;
+				}
+			} else {
+				anim_frames_per_ms := cast(f32)trex_status_anim_frames_per_ms[trex.status];
+				anim_ms_per_frame  := 1.0 / anim_frames_per_ms;
+				if trex.anim_timer >= anim_ms_per_frame {
+					trex.anim_frame_index = (trex.anim_frame_index == cast(i32)len(trex_sprite_recs[trex.status]) - 1) ? 0 : (trex.anim_frame_index + 1);
+					trex.anim_timer = 0;
+				}
 			}
 		}
 		
