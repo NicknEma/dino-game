@@ -550,6 +550,8 @@ main :: proc() {
 	time_since_attempt_start: f32;
 	time_since_startup: f32;
 	
+	time_of_crash: f32;
+	
 	attempt_count := 0;
 	mute_sfx := false;
 	
@@ -603,7 +605,6 @@ main :: proc() {
 		// Pre-render update
 		
 		// Simulate trex
-		// TODO(ema): Add 1 frame of cooldown between crash and the ability to start a new game
 		trex_prev_status := trex.status;
 		for trex_prevent_jump := false; true; {
 			trex_status_changed := false;
@@ -617,11 +618,14 @@ main :: proc() {
 						trex_prevent_jump = true;
 					}
 				} else {
-					if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
-						should_start = true;
-						trex_prevent_jump = true;
-						if !mute_sfx {
-							raylib.PlaySound(sound_press);
+					COOLDOWN_TIME_AFTER_CRASH :: 0.5;
+					if time_of_crash + COOLDOWN_TIME_AFTER_CRASH < time_since_attempt_start {
+						if raylib.IsKeyPressed(.SPACE) || raylib.IsKeyPressed(.UP) || raylib.IsMouseButtonPressed(.LEFT) {
+							should_start = true;
+							trex_prevent_jump = true;
+							if !mute_sfx {
+								raylib.PlaySound(sound_press);
+							}
 						}
 					}
 				}
@@ -879,6 +883,8 @@ main :: proc() {
 					trex.run_speed = 0.0;
 					meter.score = meter.up_to_date_score;
 					meter.high_score = max(meter.high_score, meter.score);
+					
+					time_of_crash = time_since_attempt_start;
 				}
 			}
 			
