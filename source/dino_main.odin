@@ -232,7 +232,7 @@ OBSTACLE_TEMPLATES :: [Obstacle_Tag]Obstacle_Template {
 		width = 46.0, height = 40.0,
 		min_gap = 150.0,
 		min_trex_run_speed_for_single_spawn = 8.5,
-		min_trex_run_speed_for_multiple_spawn = 999.0, // TODO(ema): Make this TREX_MAX_SPEED + 1? It's probabily clearer if it stays 999
+		min_trex_run_speed_for_multiple_spawn = 999.0,
 		speed_offset = 0.8,
 		
 		anim_frames_per_second = 1.0 / 6.0,
@@ -242,7 +242,8 @@ OBSTACLE_TEMPLATES :: [Obstacle_Tag]Obstacle_Template {
 
 // NOTE(ema): Each of these rectangle indicates only the *FIRST* image of the category, e.g.
 // the *FIRST* small cactus out of 6.
-OBSTACLE_SPRITE_RECTS :: [Obstacle_Tag]raylib.Rectangle {
+@(rodata)
+obstacle_sprite_rects := [Obstacle_Tag]raylib.Rectangle {
 	.Cactus_Small = {0, 0, 17, 35},
 	.Cactus_Large = {0, 0, 25, 50},
 	.Pterodactyl  = {0, 0, 46, 40},
@@ -998,13 +999,12 @@ main :: proc() {
 		
 		// Draw obstacles
 		{
-			obstacle_sprite_rects := OBSTACLE_SPRITE_RECTS;
-			for o in small_array.slice(&obstacles) {
+			for obstacle in small_array.slice(&obstacles) {
 				offsets := SPRITE_COORDINATES.obstacles;
-				offset  := offsets[o.tag];
+				offset  := offsets[obstacle.tag];
 				
-				rec := shift_rect(obstacle_sprite_rects[o.tag], offset);
-				pos := o.world_position;
+				rec := shift_rect(obstacle_sprite_rects[obstacle.tag], offset);
+				pos := obstacle.world_position;
 				
 				// Here we have to map the length to the offset like this:
 				//  1 -> 0 * width
@@ -1015,9 +1015,9 @@ main :: proc() {
 				//  2 -> 0.5 * 1 * 2 * width -> 1 * width
 				//  3 -> 0.5 * 2 * 3 * width -> 3 * width
 				// Then adjust the rect to point to the correct animation frame
-				rec.x += 0.5 * (o.length - 1) * o.length * rec.width;
-				rec.x += f32(o.current_anim_frame) * rec.width;
-				rec.width *= o.length;
+				rec.x += 0.5 * (obstacle.length - 1) * obstacle.length * rec.width;
+				rec.x += f32(obstacle.current_anim_frame) * rec.width;
+				rec.width *= obstacle.length;
 				
 				raylib.DrawTextureRec(sprite_tex, rec, pos, raylib.WHITE);
 			}
