@@ -1,5 +1,6 @@
 package dino
 
+// TODO(ema): Day-night cycle
 // TODO(ema): Review all uses of framerate
 
 import "base:runtime"
