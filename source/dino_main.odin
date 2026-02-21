@@ -921,7 +921,7 @@ main :: proc() {
 						meter.flash_timer = 0;
 						
 						if !mute_sfx {
-							raylib.PlaySound(sound_reached); // TODO(ema): Play on different channel?
+							raylib.PlaySound(sound_reached);
 						}
 					}
 					
