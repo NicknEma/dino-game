@@ -322,8 +322,6 @@ write_sound_assets_to_disk :: proc() {
 }
 
 main :: proc() {
-	double_resolution := false; // TODO(ema): Remove
-	
 	raylib.SetTraceLogLevel(.ERROR);
 	raylib.InitWindow(WINDOW_W, WINDOW_H, "A window");
 	raylib.SetExitKey(raylib.KeyboardKey.KEY_NULL);
