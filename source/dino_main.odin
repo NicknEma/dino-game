@@ -558,6 +558,29 @@ main :: proc() {
 	meter: Meter;
 	
 	////////////////////////////////
+	// Game-over screen variables
+	
+	game_over_text_rec := raylib.Rectangle {
+		SPRITE_COORDINATES.game_over.x, SPRITE_COORDINATES.game_over.y,
+		GAME_OVER_TEXT_W, GAME_OVER_TEXT_H
+	};
+	
+	game_over_text_pos := [2]f32 {
+		math.round(f32((WINDOW_W) / 2.0 - GAME_OVER_TEXT_W / 2.0)),
+		math.round(f32((WINDOW_H - 25.0) / 3.0))
+	};
+	
+	restart_icon_rec := raylib.Rectangle {
+		SPRITE_COORDINATES.restart_icon.x, SPRITE_COORDINATES.restart_icon.y,
+		RESTART_ICON_W, RESTART_ICON_H
+	}
+	
+	restart_icon_pos := [2]f32 {
+		math.round(f32(WINDOW_W / 2.0 - RESTART_ICON_W / 2.0)),
+		math.round(f32(WINDOW_H / 2.0))
+	}
+	
+	////////////////////////////////
 	// Other variables
 	
 	// Attempt info
@@ -1083,35 +1106,8 @@ main :: proc() {
 		
 		// Draw game over panel
 		if trex.status == .Crashed {
-			// Draw text
-			{
-				text_rec := raylib.Rectangle {
-					SPRITE_COORDINATES.game_over.x, SPRITE_COORDINATES.game_over.y,
-					GAME_OVER_TEXT_W, GAME_OVER_TEXT_H
-				};
-				
-				text_pos := [2]f32 {
-					math.round(f32((WINDOW_W) / 2.0 - GAME_OVER_TEXT_W / 2.0)),
-					math.round(f32((WINDOW_H - 25.0) / 3.0))
-				};
-				
-				raylib.DrawTextureRec(sprite_tex, text_rec, text_pos, raylib.WHITE);
-			}
-			
-			// Draw restart icon
-			{
-				restart_icon_rec := raylib.Rectangle {
-					SPRITE_COORDINATES.restart_icon.x, SPRITE_COORDINATES.restart_icon.y,
-					RESTART_ICON_W, RESTART_ICON_H
-				}
-				
-				restart_icon_pos := [2]f32 {
-					math.round(f32(WINDOW_W / 2.0 - RESTART_ICON_W / 2.0)),
-					math.round(f32(WINDOW_H / 2.0))
-				}
-				
-				raylib.DrawTextureRec(sprite_tex, restart_icon_rec, restart_icon_pos, raylib.WHITE);
-			}
+			raylib.DrawTextureRec(sprite_tex, game_over_text_rec, game_over_text_pos, raylib.WHITE); // Draw text
+			raylib.DrawTextureRec(sprite_tex, restart_icon_rec, restart_icon_pos, raylib.WHITE);     // Draw restart icon
 		}
 		
 		// Draw debug info
