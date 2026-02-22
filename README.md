@@ -6,7 +6,14 @@
  Recreation of the offline Google Chrome dinosaur game. Made with Odin & Raylib.
 
 # Build
- Building the game is as simple as invoking the Odin compiler on the `source` directory: `odin build source`. The provided build scripts act as wrappers for common sets of flags, and on Windows invoke the [Resource compiler](https://learn.microsoft.com/en-us/windows/win32/menurc/resource-compiler) to link the executable with an icon.
+ Building the game is as simple as invoking the [Odin](https://odin-lang.org/) compiler on the `source` directory: `odin build source`. The provided build scripts act as wrappers for common sets of flags, and on Windows invoke the [Resource compiler](https://learn.microsoft.com/en-us/windows/win32/menurc/resource-compiler) to link the executable with an icon.
+
+```
+build.bat          Build with debug info, no optimizations and console output enabled; Link icon through the Resource compiler
+build_release.bat  Build with debug info, optimizations and console output disabled; Link icon through the Resource compiler
+
+build.sh           Build with debug info, no optimizations
+```
 
 # Reference
  The implementation uses [trex-runner](https://trex-runner.com/) as a reference, mostly for constants and physics, so that the feel is as close to the original as possible. The code structure, however, is completely different.
