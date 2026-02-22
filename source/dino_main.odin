@@ -3,9 +3,7 @@ package dino
 // TODO(ema): Day-night cycle
 // TODO(ema): Review all uses of framerate
 // TODO(ema): SetProcessWorkingSetSizeEx
-// TODO(ema): Don't embed the larger texture
 // TODO(ema): Update Odin compiler and change os2 to os
-// TODO(ema): Update README
 
 import "base:runtime"
 import "base:intrinsics"
@@ -41,7 +39,7 @@ SPRITE             :: SPRITE_1X
 SPRITE_COORDINATES :: SPRITE_1X_COORDINATES
 
 SPRITE_1X :: #load("../assets/offline-sprite-1x.png")
-SPRITE_2X :: #load("../assets/offline-sprite-2x.png")
+// SPRITE_2X :: #load("../assets/offline-sprite-2x.png") // Unused
 
 SPRITE_1X_COORDINATES :: Sprite_Coordinates {
 	obstacles = {
