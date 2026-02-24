@@ -317,6 +317,12 @@ main :: proc() {
 	sprite_img := raylib.LoadImageFromMemory(".png", raw_data(sprite_mem), cast(i32)len(sprite_mem));
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
+	render_tex := raylib.LoadRenderTexture(WINDOW_W, WINDOW_H);
+	invert_tex := raylib.LoadRenderTexture(WINDOW_W, WINDOW_H);
+	
+	daynight_shader := raylib.LoadShaderFromMemory(nil, #load("dino_daynight_fs.glsl", cstring));
+	daynight_shader_uniform_index := raylib.GetShaderLocation(daynight_shader, "invertAmount");
+	
 	{
 		ICON :: #load("../assets/trex-icon.jpg");
 		icon := raylib.LoadImageFromMemory(".jpg", raw_data(ICON), cast(i32)len(ICON));
@@ -557,6 +563,21 @@ main :: proc() {
 	}
 	
 	////////////////////////////////
+	// Day-night cycle variables
+	
+	DAY_TO_NIGHT_DURATION :: 0.8;
+	NIGHT_TO_DAY_DURATION :: 0.8;
+	
+	DAY_DURATION   :: 20.0 + NIGHT_TO_DAY_DURATION;
+	NIGHT_DURATION :: 20.0 + DAY_TO_NIGHT_DURATION;
+	
+	DAY_NIGHT_CYCLE_DELAY :: 50.0;
+	
+	time_of_day: f32 = NIGHT_TO_DAY_DURATION - DAY_NIGHT_CYCLE_DELAY;
+	day_night_cycle_t: f32;
+	day_night_start_t, day_night_end_t: f32 = 0.0, 1.0;
+	
+	////////////////////////////////
 	// Other variables
 	
 	frame_count_since_attempt_start := 0;
@@ -668,6 +689,8 @@ main :: proc() {
 					
 					small_array.clear(&clouds);
 					small_array.push_back(&clouds, make_cloud(x = WINDOW_W));
+					
+					time_of_day = NIGHT_TO_DAY_DURATION - DAY_NIGHT_CYCLE_DELAY;
 					
 					if attempt_count > 0 {
 						init_ground(ground_sections[:]);
@@ -986,10 +1009,36 @@ main :: proc() {
 			}
 		}
 		
+		// Update time of day
+		if trex.status != .Crashed && trex.status != .Waiting {
+			if time_of_day < NIGHT_TO_DAY_DURATION {
+				day_night_end_t = 0.0;
+				
+				night_to_day_t := time_of_day;
+				day_night_cycle_t = math.unlerp(f32(0.0), NIGHT_TO_DAY_DURATION, night_to_day_t);
+			} else if time_of_day < DAY_DURATION {
+				day_night_start_t = 0.0;
+				day_night_cycle_t = 0.0;
+			} else if time_of_day < DAY_DURATION + DAY_TO_NIGHT_DURATION {
+				day_night_end_t = 1.0;
+				
+				day_to_night_t := time_of_day - DAY_DURATION;
+				day_night_cycle_t = math.unlerp(f32(0.0), DAY_TO_NIGHT_DURATION, day_to_night_t);
+			} else if time_of_day < DAY_DURATION + NIGHT_DURATION {
+				day_night_start_t = 1.0;
+				day_night_cycle_t = 0.0;
+			} else {
+				time_of_day = 0.0;
+			}
+			
+			time_of_day += dt;
+		}
+		
 		////////////////////////////////
 		// Render
 		
 		raylib.BeginDrawing();
+		raylib.BeginTextureMode(render_tex);
 		
 		bg_color := raylib.GetColor(BG_COLOR_DAY);
 		raylib.ClearBackground(bg_color);
@@ -1205,6 +1254,28 @@ main :: proc() {
 				
 				return width;
 			}
+		}
+		
+		raylib.EndTextureMode();
+		
+		// Copy the render texture to another render texture, so it un-does the flip
+		// directly on the GPU.
+		{
+			raylib.BeginTextureMode(invert_tex);
+			raylib.DrawTexture(render_tex.texture, 0, 0, raylib.WHITE);
+			raylib.EndTextureMode();
+		}
+		
+		// Draw the render texture to the screen
+		{
+			raylib.BeginShaderMode(daynight_shader);
+			
+			v := math.lerp(day_night_start_t, day_night_end_t, day_night_cycle_t);
+			raylib.SetShaderValue(daynight_shader, daynight_shader_uniform_index, &v, .FLOAT);
+			
+			raylib.DrawTexture(invert_tex.texture, 0, 0, raylib.WHITE);
+			
+			raylib.EndShaderMode();
 		}
 		
 		raylib.EndDrawing();
