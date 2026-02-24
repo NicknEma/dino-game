@@ -317,6 +317,8 @@ main :: proc() {
 	sprite_img := raylib.LoadImageFromMemory(".png", raw_data(sprite_mem), cast(i32)len(sprite_mem));
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
+	daynight_shader := raylib.LoadShaderFromMemory(nil, #load("dino_daynight_fs.glsl", cstring));
+	
 	{
 		ICON :: #load("../assets/trex-icon.jpg");
 		icon := raylib.LoadImageFromMemory(".jpg", raw_data(ICON), cast(i32)len(ICON));
@@ -990,6 +992,7 @@ main :: proc() {
 		// Render
 		
 		raylib.BeginDrawing();
+		raylib.BeginShaderMode(daynight_shader);
 		
 		bg_color := raylib.GetColor(BG_COLOR_DAY);
 		raylib.ClearBackground(bg_color);
@@ -1207,6 +1210,7 @@ main :: proc() {
 			}
 		}
 		
+		raylib.EndShaderMode();
 		raylib.EndDrawing();
 		
 		////////////////////////////////
