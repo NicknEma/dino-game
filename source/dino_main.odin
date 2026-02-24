@@ -1216,13 +1216,15 @@ main :: proc() {
 		
 		raylib.EndTextureMode();
 		
+		// Copy the render texture to another render texture, so it un-does the flip
+		// directly on the GPU.
 		raylib.BeginTextureMode(invert_tex);
 		raylib.DrawTexture(render_tex.texture, 0, 0, raylib.WHITE);
 		raylib.EndTextureMode();
 		
+		// Draw the render texture to the screen
 		raylib.BeginShaderMode(daynight_shader);
 		raylib.DrawTexture(invert_tex.texture, 0, 0, raylib.WHITE);
-		// raylib.DrawTexturePro(render_tex.texture, {0,0,WINDOW_W,WINDOW_H}, {0,WINDOW_H,WINDOW_W,0}, {}, 0, raylib.WHITE); 
 		raylib.EndShaderMode();
 		
 		raylib.EndDrawing();
