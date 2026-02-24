@@ -318,6 +318,7 @@ main :: proc() {
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
 	daynight_shader := raylib.LoadShaderFromMemory(nil, #load("dino_daynight_fs.glsl", cstring));
+	if !raylib.IsShaderValid(daynight_shader) do fmt.eprintf("Nope\n");
 	
 	{
 		ICON :: #load("../assets/trex-icon.jpg");
