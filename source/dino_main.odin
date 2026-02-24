@@ -566,6 +566,19 @@ main :: proc() {
 	}
 	
 	////////////////////////////////
+	// Day-night cycle variables
+	
+	DAY_TO_NIGHT_DURATION :: 0.8;
+	NIGHT_TO_DAY_DURATION :: 0.8;
+	
+	DAY_DURATION   :: 2.0 + NIGHT_TO_DAY_DURATION;
+	NIGHT_DURATION :: 2.0 + DAY_TO_NIGHT_DURATION;
+	
+	time_of_day: f32 = NIGHT_TO_DAY_DURATION;
+	day_night_cycle_t: f32;
+	day_night_start_t, day_night_end_t: f32 = 0.0, 1.0;
+	
+	////////////////////////////////
 	// Other variables
 	
 	frame_count_since_attempt_start := 0;
@@ -620,28 +633,6 @@ main :: proc() {
 			
 			if raylib.IsKeyPressed(raylib.KeyboardKey.KP_SUBTRACT) {
 				trex.run_speed = max(0.9*trex.run_speed, TREX_INITIAL_RUN_SPEED);
-			}
-			
-			{
-				if raylib.IsKeyPressed(.P) {
-					v: f32 = 1;
-					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
-				}
-				
-				if raylib.IsKeyPressed(.O) {
-					v: f32 = 0.7;
-					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
-				}
-				
-				if raylib.IsKeyPressed(.I) {
-					v: f32 = 0.3;
-					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
-				}
-				
-				if raylib.IsKeyPressed(.U) {
-					v: f32 = 0;
-					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
-				}
 			}
 		}
 		
@@ -699,6 +690,8 @@ main :: proc() {
 					
 					small_array.clear(&clouds);
 					small_array.push_back(&clouds, make_cloud(x = WINDOW_W));
+					
+					time_of_day = NIGHT_TO_DAY_DURATION;
 					
 					if attempt_count > 0 {
 						init_ground(ground_sections[:]);
@@ -1017,6 +1010,31 @@ main :: proc() {
 			}
 		}
 		
+		// Update time of day
+		if trex.status != .Crashed && trex.status != .Waiting {
+			if time_of_day < NIGHT_TO_DAY_DURATION {
+				day_night_end_t = 0.0;
+				
+				night_to_day_t := time_of_day;
+				day_night_cycle_t = math.unlerp(f32(0.0), NIGHT_TO_DAY_DURATION, night_to_day_t);
+			} else if time_of_day < DAY_DURATION {
+				day_night_start_t = 0.0;
+				day_night_cycle_t = 0.0;
+			} else if time_of_day < DAY_DURATION + DAY_TO_NIGHT_DURATION {
+				day_night_end_t = 1.0;
+				
+				day_to_night_t := time_of_day - DAY_DURATION;
+				day_night_cycle_t = math.unlerp(f32(0.0), DAY_TO_NIGHT_DURATION, day_to_night_t);
+			} else if time_of_day < DAY_DURATION + NIGHT_DURATION {
+				day_night_start_t = 1.0;
+				day_night_cycle_t = 0.0;
+			} else {
+				time_of_day = 0.0;
+			}
+			
+			time_of_day += dt;
+		}
+		
 		////////////////////////////////
 		// Render
 		
@@ -1243,14 +1261,23 @@ main :: proc() {
 		
 		// Copy the render texture to another render texture, so it un-does the flip
 		// directly on the GPU.
-		raylib.BeginTextureMode(invert_tex);
-		raylib.DrawTexture(render_tex.texture, 0, 0, raylib.WHITE);
-		raylib.EndTextureMode();
+		{
+			raylib.BeginTextureMode(invert_tex);
+			raylib.DrawTexture(render_tex.texture, 0, 0, raylib.WHITE);
+			raylib.EndTextureMode();
+		}
 		
 		// Draw the render texture to the screen
-		raylib.BeginShaderMode(daynight_shader);
-		raylib.DrawTexture(invert_tex.texture, 0, 0, raylib.WHITE);
-		raylib.EndShaderMode();
+		{
+			raylib.BeginShaderMode(daynight_shader);
+			
+			v := math.lerp(day_night_start_t, day_night_end_t, day_night_cycle_t);
+			raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
+			
+			raylib.DrawTexture(invert_tex.texture, 0, 0, raylib.WHITE);
+			
+			raylib.EndShaderMode();
+		}
 		
 		raylib.EndDrawing();
 		
