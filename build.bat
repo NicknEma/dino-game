@@ -1,7 +1,7 @@
 @echo off
 
 set root=%cd%
-set opts=-debug -o:none
+set opts=-debug -o:none -define:DINO_DEBUG_TOOLS=true -define:DINO_FIXED_DT=true
 
 if not exist build mkdir build
 pushd build

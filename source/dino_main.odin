@@ -1,9 +1,11 @@
 package dino
 
-// TODO(ema): Day-night cycle
 // TODO(ema): Review all uses of framerate
 // TODO(ema): SetProcessWorkingSetSizeEx
 // TODO(ema): Update Odin compiler and change os2 to os
+
+DINO_DEBUG_TOOLS :: #config(DINO_DEBUG_TOOLS, false);
+DINO_FIXED_DT    :: #config(DINO_FIXED_DT,    false);
 
 import "base:runtime"
 import "base:intrinsics"
@@ -265,7 +267,7 @@ Obstacle :: struct {
 	using debug: Obstacle_Debug,
 }
 
-when ODIN_DEBUG {
+when DINO_DEBUG_TOOLS {
 	Obstacle_Debug :: struct {
 		color: raylib.Color,
 	}
@@ -426,7 +428,7 @@ main :: proc() {
 		obstacle.anim_frames_per_second = template.anim_frames_per_second;
 		obstacle.current_anim_frame = 0;
 		
-		when ODIN_DEBUG {
+		when DINO_DEBUG_TOOLS {
 			debug_colors := []raylib.Color {
 				raylib.RED, raylib.ORANGE, raylib.GREEN, raylib.SKYBLUE, raylib.PURPLE
 			};
@@ -589,7 +591,7 @@ main :: proc() {
 	attempt_count := 0;
 	mute_sfx := false;
 	
-	when ODIN_DEBUG {
+	when DINO_DEBUG_TOOLS {
 		Debug_Draw_Flag :: enum {
 			Hotkeys,
 			Hitboxes,
@@ -607,14 +609,13 @@ main :: proc() {
 	for !raylib.WindowShouldClose() {
 		free_all(context.temp_allocator);
 		
-		FIXED_DT :: ODIN_DEBUG;
-		when FIXED_DT {
+		when DINO_FIXED_DT {
 			dt := f32(1.0 / TARGET_FPS);
 		} else {
 			dt := raylib.GetFrameTime();
 		}
 		
-		when ODIN_DEBUG {
+		when DINO_DEBUG_TOOLS {
 			for f in Debug_Draw_Flag {
 				k := raylib.KeyboardKey(cast(int)f + cast(int)raylib.KeyboardKey.ZERO);
 				if raylib.IsKeyPressed(raylib.KeyboardKey(k)) {
@@ -1151,7 +1152,7 @@ main :: proc() {
 		}
 		
 		// Draw debug info
-		when ODIN_DEBUG {
+		when DINO_DEBUG_TOOLS {
 			global_debug_text_x := i32(0);
 			if .Hotkeys in debug_draw_flags {
 				max_text_w := i32(0);
