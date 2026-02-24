@@ -571,7 +571,9 @@ main :: proc() {
 	DAY_DURATION   :: 20.0 + NIGHT_TO_DAY_DURATION;
 	NIGHT_DURATION :: 20.0 + DAY_TO_NIGHT_DURATION;
 	
-	time_of_day: f32 = NIGHT_TO_DAY_DURATION;
+	DAY_NIGHT_CYCLE_DELAY :: 50.0;
+	
+	time_of_day: f32 = NIGHT_TO_DAY_DURATION - DAY_NIGHT_CYCLE_DELAY;
 	day_night_cycle_t: f32;
 	day_night_start_t, day_night_end_t: f32 = 0.0, 1.0;
 	
@@ -688,7 +690,7 @@ main :: proc() {
 					small_array.clear(&clouds);
 					small_array.push_back(&clouds, make_cloud(x = WINDOW_W));
 					
-					time_of_day = NIGHT_TO_DAY_DURATION;
+					time_of_day = NIGHT_TO_DAY_DURATION - DAY_NIGHT_CYCLE_DELAY;
 					
 					if attempt_count > 0 {
 						init_ground(ground_sections[:]);
