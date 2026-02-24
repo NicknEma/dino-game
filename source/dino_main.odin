@@ -318,6 +318,7 @@ main :: proc() {
 	sprite_tex := raylib.LoadTextureFromImage(sprite_img);
 	
 	render_tex := raylib.LoadRenderTexture(WINDOW_W, WINDOW_H);
+	invert_tex := raylib.LoadRenderTexture(WINDOW_W, WINDOW_H);
 	
 	daynight_shader := raylib.LoadShaderFromMemory(nil, #load("dino_daynight_fs.glsl", cstring));
 	if !raylib.IsShaderValid(daynight_shader) do fmt.eprintf("Nope\n");
@@ -1215,8 +1216,13 @@ main :: proc() {
 		
 		raylib.EndTextureMode();
 		
-		raylib.BeginShaderMode(daynight_shader);
+		raylib.BeginTextureMode(invert_tex);
 		raylib.DrawTexture(render_tex.texture, 0, 0, raylib.WHITE);
+		raylib.EndTextureMode();
+		
+		raylib.BeginShaderMode(daynight_shader);
+		raylib.DrawTexture(invert_tex.texture, 0, 0, raylib.WHITE);
+		// raylib.DrawTexturePro(render_tex.texture, {0,0,WINDOW_W,WINDOW_H}, {0,WINDOW_H,WINDOW_W,0}, {}, 0, raylib.WHITE); 
 		raylib.EndShaderMode();
 		
 		raylib.EndDrawing();
