@@ -629,6 +629,16 @@ main :: proc() {
 				}
 				
 				if raylib.IsKeyPressed(.O) {
+					v: f32 = 0.7;
+					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
+				}
+				
+				if raylib.IsKeyPressed(.I) {
+					v: f32 = 0.3;
+					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
+				}
+				
+				if raylib.IsKeyPressed(.U) {
 					v: f32 = 0;
 					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
 				}
