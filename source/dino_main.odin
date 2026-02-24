@@ -321,10 +321,7 @@ main :: proc() {
 	invert_tex := raylib.LoadRenderTexture(WINDOW_W, WINDOW_H);
 	
 	daynight_shader := raylib.LoadShaderFromMemory(nil, #load("dino_daynight_fs.glsl", cstring));
-	if !raylib.IsShaderValid(daynight_shader) do fmt.eprintf("Nope\n");
-	
-	daynight_invert_uniform_index := raylib.GetShaderLocation(daynight_shader, "invertT");
-	if daynight_invert_uniform_index < 0 do fmt.eprintf("Nope 2\n");
+	daynight_shader_uniform_index := raylib.GetShaderLocation(daynight_shader, "invertAmount");
 	
 	{
 		ICON :: #load("../assets/trex-icon.jpg");
@@ -1272,7 +1269,7 @@ main :: proc() {
 			raylib.BeginShaderMode(daynight_shader);
 			
 			v := math.lerp(day_night_start_t, day_night_end_t, day_night_cycle_t);
-			raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
+			raylib.SetShaderValue(daynight_shader, daynight_shader_uniform_index, &v, .FLOAT);
 			
 			raylib.DrawTexture(invert_tex.texture, 0, 0, raylib.WHITE);
 			

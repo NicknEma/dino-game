@@ -8,22 +8,17 @@ in vec4 fragColor;
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
 
-uniform float invertT;
+uniform float invertAmount;
 
 // Output fragment color
 out vec4 finalColor;
-
-// NOTE: Add your custom variables here
 
 void main() {
 	// Texel color fetching from texture sampler
 	vec4 texelColor = texture(texture0, fragTexCoord)*colDiffuse*fragColor;
 	
-	// Convert texel color to grayscale using NTSC conversion weights
-	// float gray = dot(texelColor.rgb, vec3(0.299, 0.587, 0.114));
-	vec4 inverted = vec4(1,1,1,1) - texelColor;
-	
-	vec4 finalRGB = mix(texelColor, inverted, invertT);
+	vec4 inverted = vec4(1.0) - texelColor;
+	vec4 finalRGB = mix(texelColor, inverted, invertAmount);
 	
 	// Calculate final fragment color
 	finalColor = vec4(finalRGB.rgb, texelColor.a);
