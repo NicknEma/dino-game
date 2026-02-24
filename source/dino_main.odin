@@ -323,6 +323,9 @@ main :: proc() {
 	daynight_shader := raylib.LoadShaderFromMemory(nil, #load("dino_daynight_fs.glsl", cstring));
 	if !raylib.IsShaderValid(daynight_shader) do fmt.eprintf("Nope\n");
 	
+	daynight_invert_uniform_index := raylib.GetShaderLocation(daynight_shader, "invertT");
+	if daynight_invert_uniform_index < 0 do fmt.eprintf("Nope 2\n");
+	
 	{
 		ICON :: #load("../assets/trex-icon.jpg");
 		icon := raylib.LoadImageFromMemory(".jpg", raw_data(ICON), cast(i32)len(ICON));
@@ -617,6 +620,18 @@ main :: proc() {
 			
 			if raylib.IsKeyPressed(raylib.KeyboardKey.KP_SUBTRACT) {
 				trex.run_speed = max(0.9*trex.run_speed, TREX_INITIAL_RUN_SPEED);
+			}
+			
+			{
+				if raylib.IsKeyPressed(.P) {
+					v: f32 = 1;
+					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
+				}
+				
+				if raylib.IsKeyPressed(.O) {
+					v: f32 = 0;
+					raylib.SetShaderValue(daynight_shader, daynight_invert_uniform_index, &v, .FLOAT);
+				}
 			}
 		}
 		

@@ -8,6 +8,8 @@ in vec4 fragColor;
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
 
+uniform float invertT;
+
 // Output fragment color
 out vec4 finalColor;
 
@@ -21,6 +23,8 @@ void main() {
 	// float gray = dot(texelColor.rgb, vec3(0.299, 0.587, 0.114));
 	vec4 inverted = vec4(1,1,1,1) - texelColor;
 	
+	vec4 finalRGB = mix(texelColor, inverted, invertT);
+	
 	// Calculate final fragment color
-	finalColor = vec4(inverted.rgb, texelColor.a);
+	finalColor = vec4(finalRGB.rgb, texelColor.a);
 }
